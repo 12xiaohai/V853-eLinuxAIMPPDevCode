@@ -1,0 +1,16 @@
+[
+    {
+        "arguments": [
+            "c++",
+            "-c",
+            "-Wall",
+            "-O2",
+            "-I/usr/include/x86_64-linux-gnu/",
+            "-o",
+            "main.o",
+            "main.cpp"
+        ],
+        "directory": "/home/ubuntu/Desktop/WorkSpace/part1\u7a0b\u5e8f\u6e90\u7801/05_\u5168\u5fd7\u591a\u5a92\u4f53\u5e73\u53f0\u57fa\u7840/5-1_\u5e38\u89c1\u7684\u591a\u5a92\u4f53\u6846\u67b6/ffmpeg-convert",
+        "file": "main.cpp"
+    }
+]
