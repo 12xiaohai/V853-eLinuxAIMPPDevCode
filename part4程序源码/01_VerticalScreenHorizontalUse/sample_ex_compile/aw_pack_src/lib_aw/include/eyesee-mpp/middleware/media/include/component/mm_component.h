@@ -65,10 +65,10 @@ typedef enum COMP_COMMANDTYPE
     COMP_CommandMarkBuffer,  /**< Mark a component/buffer for observation */
     COMP_CommandKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
     COMP_CommandVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
-    COMP_CommandVendorAddChn,    /**< add a mux channel of recRender,  MUX_CHN_ATTR_S */
-    COMP_CommandVendorRemoveChn, /**< remove a mux channel of recRender, chnId */
-	COMP_CommandSwitchFile,  //impact switch file, when cache exist: immediately; when cache not exist: smooth.
-	COMP_CommandSwitchFileNormal, //normal switch file. cache not exist: smooth.
+    //COMP_CommandVendorAddChn,    /**< add a mux channel of recRender,  MUX_CHN_ATTR_S */
+    //COMP_CommandVendorRemoveChn, /**< remove a mux channel of recRender, chnId */
+	//COMP_CommandSwitchFile,  //impact switch file, when cache exist: immediately; when cache not exist: smooth.
+	//COMP_CommandSwitchFileNormal, //normal switch file. cache not exist: smooth.
     COMP_CommandVendorFillBuffer,    //fill audio buffer from audioSink.
 	COMP_CommandVendorReturnAllBuffer, //return all buffers which come from other component.
 	COMP_CommandVendorChangeANativeWindow,
@@ -361,6 +361,7 @@ typedef enum COMP_INDEXTYPE {
     COMP_IndexVendorVencProcSet, /** reference: VeProcSet */
     COMP_IndexVendorVencHighPassFilter, /** reference: VencHighPassFilter */
     COMP_IndexVendorVencDayOrNight,
+    COMP_IndexVendorVencCreateEncoder,
     COMP_IndexVendorVencDestroyEncoder,
     COMP_IndexVendorVencMotionSearchParam, /**< reference: VencMotionSearchParam */
     COMP_IndexVendorVencMotionSearchResult, /**< reference: VencMotionSearchResult */
@@ -368,6 +369,19 @@ typedef enum COMP_INDEXTYPE {
     COMP_IndexVendorVencVe2IspParam,        /**< reference: VencVe2IspParam */
     COMP_IndexVendorVencSetWbYuv, /**< reference: sWbYuvParam */
     COMP_IndexVendorVencGetWbYuv, /**< reference: VencThumbInfo */
+    COMP_IndexVendorVencRegionD3DParam, /**< reference: VencRegionD3DParam */
+    COMP_IndexVendorVencRegionD3DResult, /**< reference: VencRegionD3DResult */
+    COMP_IndexVendorVencChromaQPOffset, /**< reference: int */
+    COMP_IndexVendorVencH264ConstraintFlag, /**< reference: VencH264ConstraintFlag */
+    COMP_IndexVendorVencVe2IspD2DLimit, /**< reference: VencVe2IspD2DLimit */
+    COMP_IndexVendorVencEnableSmallSearchRange, /**< reference: BOOL */
+    COMP_IndexVendorVencRotVe2Isp, /**< reference: VencRotVe2Isp */
+    COMP_IndexVendorVencForceConfWin, /**< reference: VencForceConfWin */
+    COMP_IndexVendorVencMBSuminfo, /**< reference: VencMBSumInfo */
+    COMP_IndexVendorVencGetInsertDataBufStatus, /**< reference: VENC_BUF_STATUS */
+    COMP_IndexVendorVencSetInsertData, /**< reference: VencInsertData */
+    COMP_IndexVendorVencEncAndDecCase, /** reference: BOOL     */
+    COMP_IndexVendorVencLensMovingMaxQp, /** reference: int */
 
     // below for aenc
     COMP_IndexVendorAencChnAttr = 0x7F002200,        /**< reference: AENC_CHN_ATTR_S */
@@ -378,22 +392,24 @@ typedef enum COMP_INDEXTYPE {
     COMP_IndexVendorAencReleaseStream,  /**< reference: AUDIO_STREAM_S */
 
     // below for muxer
-    COMP_IndexVendorMuxGroupAttr = 0x7F002300,   /**< reference: MUX_GRP_ATTR_S */
-    COMP_IndexVendorMuxChnAttr,     /**< reference: MuxChnAttr */
+    //COMP_IndexVendorMuxGroupAttr = 0x7F002300,   /**< reference: MUX_GRP_ATTR_S */
+    COMP_IndexVendorMuxChnAttr = 0x7F002301,     /**< reference: MuxChnAttr */
     COMP_IndexVendorMuxGetDuration, /**< reference: int64_t */
-    COMP_IndexVendorMuxCacheState,  /**< reference: CacheState */
+    //COMP_IndexVendorMuxCacheState,  /**< reference: CacheState */
     COMP_IndexVendorMuxSwitchFd,    /**< reference: CdxFdT */
     COMP_IndexVendorSdcardState,    /**< reference: int */
-    COMP_IndexVendorMuxCacheDuration,  /**< reference: int64_t */
-    COMP_IndexVendorMuxCacheStrmIds,  /**< reference: unsigned int */
+    //COMP_IndexVendorMuxCacheDuration,  /**< reference: int64_t */
+    COMP_IndexVendorMuxStrmIds,  /**< reference: unsigned int */
     COMP_IndexVendorExtraData,      /**< reference: VencHeaderData, for h264: spspps */
     //COMP_IndexVendorFsWriteMode, /**< reference: FSWRITEMODE */
     //COMP_IndexVendorFsSimpleCacheSize,   /**< reference: int */
-    COMP_IndexVendorMuxSwitchPolicy,   /** RecordFileDurationPolicy  */
-    COMP_IndexVendorMuxShutDownType,   /**ShutDownType **/
+    COMP_IndexVendorMuxSwitchPolicy,   /**< RecordFileDurationPolicy  */
+    COMP_IndexVendorMuxShutDownType,   /**< BOOL */
     COMP_IndexSwitchFileNormal,     /**< reference: SwitchFileNormalInfo */
-    COMP_IndexVendorMuxSetThmPic,
+    COMP_IndexVendorMuxSetThmPic, /**< THM_PIC */
     COMP_IndexVendorMuxVeChnBindStreamId, /**< reference: VeChnBindStreamIdNode */
+    //COMP_IndexVendorMuxInputNodeCount, /**< reference: int */
+    COMP_IndexVendorMuxFD, /**< reference: CdxFdT */
     
     // below for demux
     COMP_IndexVendorDemuxChnAttr = 0x7F002400,   /**< reference: DEMUX_ATTR_S */
@@ -433,6 +449,7 @@ typedef enum COMP_INDEXTYPE {
     //COMP_IndexVendorAIChnGetValidFrameRef,
     COMP_IndexVendorAIChnGetFreeFrame,      /**< reference: AudioFrame */
     COMP_IndexVendorAIChnReleaseFrame,      /**< reference: AudioFrame */
+    COMP_IndexVendorAIChnAttr,              /**< reference: AI_CHN_ATTR_S */
     COMP_IndexVendorAIChnParameter,         /**< reference: AI_CHN_PARAM_S */
     COMP_IndexVendorAIResetChannel,
     COMP_IndexVendorAISetSaveFileInfo,      /**< reference: AUDIO_SAVE_FILE_INFO_S */
@@ -447,11 +464,13 @@ typedef enum COMP_INDEXTYPE {
     COMP_IndexVendorAOSetSaveFileInfo,      /**< reference: AUDIO_SAVE_FILE_INFO_S */
     COMP_IndexVendorAOQueryFileStatus,      /**< reference: AUDIO_SAVE_FILE_INFO_S */
     COMP_IndexVendorAOChnMute,           /**< reference: BOOL* */
+    COMP_IndexVendorAOChnVps,           /**< reference: float */
     COMP_IndexVendorAIOVqeAttr,             /**< reference: AI_VQE_CONFIG_S */
     COMP_IndexVendorAIOVqeEnable,
     COMP_IndexVendorAIOVqeDisable,
     COMP_IndexVendorAIODrcEnable,
     COMP_IndexVendorAIOAgcEnable,
+    COMP_IndexVendorAIOAgcDisable,
     COMP_IndexVendorAIOReSmpEnable,         /**< reference: AUDIO_SAMPLE_RATE_E */
     COMP_IndexVendorAIOReSmpDisable,
     COMP_IndexVendorAIIgnoreData,             /**< reference: BOOL* */
@@ -618,6 +637,7 @@ typedef enum COMP_EVENTTYPE
 	COMP_EventNeedNextFd,   /**< reference: int muxerId */
 	COMP_EventRecVbvFull,
 	COMP_EventWriteDiskError,
+	COMP_EventMuxForceIFrame, /**< mux need venc force I frame, nData1=streamId, used in non-tunnel mode */
 
 	COMP_EventRecGpsDataInvalid,
     COMP_EventBsframeAvailable, /**< reference: CDXRecorderBsInfo */
@@ -627,6 +647,8 @@ typedef enum COMP_EVENTTYPE
 
     COMP_EventLinkageVe2IspParam,
     COMP_EventLinkageIsp2VeParam,
+
+    COMP_EventDropFrame,
 
     COMP_EventMax = 0x7FFFFFFF
 } COMP_EVENTTYPE;

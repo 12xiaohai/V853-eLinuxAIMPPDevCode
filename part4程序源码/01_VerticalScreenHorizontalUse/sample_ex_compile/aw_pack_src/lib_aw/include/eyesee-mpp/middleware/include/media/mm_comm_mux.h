@@ -17,6 +17,7 @@
 #include "plat_errno.h"
 #include "plat_defines.h"
 #include "FsWriter.h"
+#include "record_writer.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -34,12 +35,17 @@ typedef struct VideoAttr
     int mVeChn;
 }VideoAttr;
 
-/*Define attributes of mux GROUP*/
-typedef struct MUX_GRP_ATTR_S
+/*Define attributes of mux channel*/
+typedef struct MUX_CHN_ATTR_S
 {
     // video
+    //even though we don't wrap one of these video streams, we still need set all video streams info to mpi_mux.
+    //Because streamId == portIndex == suffix of array pRecRenderData->sInPortTunnelInfo[].
+    //so array mVideoAttr[] should be better to match pRecRenderData->sInPortTunnelInfo[].
+    //It is best to let MUX_CHN_ATTR_S.mVideoAttr[] == _media_file_inf_t.mMediaVideoInfo[] == pRecRenderData->sInPortTunnelInfo[].
+    //Because we use streamId as suffix to get video info from mVideoAttr[], so mVideoAttr[] must match pRecRenderData->sInPortTunnelInfo[].
     int mVideoAttrValidNum;
-    VideoAttr mVideoAttr[6];
+    VideoAttr mVideoAttr[MAX_VIDEO_TRACK_COUNT];
     /*
     int mHeight;
     int mWidth;
@@ -60,27 +66,18 @@ typedef struct MUX_GRP_ATTR_S
 
     // text
     PAYLOAD_TYPE_E mTextEncodeType;
-}MUX_GRP_ATTR_S;
-
-typedef struct MUX_GRP_PARAM_S
-{
-    int xxx;
-}MUX_GRP_PARAM_S;
-
-/*Define attributes of mux channel*/
-typedef struct MUX_CHN_ATTR_S
-{
+    
     int mMuxerId;
     MEDIA_FILE_FORMAT_E mMediaFileFormat;
-    int64_t mMaxFileDuration;   //unit:ms
+    int64_t mMaxFileDuration;   //unit:ms, 0 means infinite.
     int64_t mMaxFileSizeBytes;  //unit:byte
-    int     mFallocateLen;
+    //int     mFallocateLen;
     BOOL    mCallbackOutFlag;   //send data through callback.
     FSWRITEMODE mFsWriteMode;
     int         mSimpleCacheSize;
-    BOOL        bBufFromCacheFlag;
+    //BOOL        bBufFromCacheFlag;
     int mAddRepairInfo; //1: add, 0:not add.
-    int mMaxFrmsTagInterval;    //unit:us, for mp4 repair
+    int mMaxFrmsTagInterval;    //unit:us, for mp4 repair, <=0: 1000000us
 }MUX_CHN_ATTR_S;
 
 /*Define detailed params for mux channel*/
@@ -94,21 +91,21 @@ typedef struct CdxFdT
     int mFd;
     int mnFallocateLen;
     //int mIsImpact;
-    int mMuxerId;
+    //int mMuxerId;
 }CdxFdT;
 
-typedef struct ShutDownType
-{
-    int mMuxerId;   //-1:for all muxerId
-    BOOL mbShutDownNowFlag;
-}ShutDownType;
+//typedef struct ShutDownType
+//{
+//    int mMuxerId;   //-1:for all muxerId
+//    BOOL mbShutDownNowFlag;
+//}ShutDownType;
 
 typedef struct SwitchFileNormalInfo
 {
-    int mMuxerId;   // >=0
+    //int mMuxerId;   // >=0
     int mFd;
     int mnFallocateLen;
-    BOOL mbIncludeCache;    //if include cache data as first data.
+    //BOOL mbIncludeCache;    //if include cache data as first data.
 }SwitchFileNormalInfo;
 
 typedef struct thm_pic_s
@@ -117,11 +114,18 @@ typedef struct thm_pic_s
     int thm_pic_size;
 }THM_PIC;
 
-typedef struct thm_info_s
+//typedef struct thm_info_s
+//{
+//    THM_PIC thm_pic;
+//    int mMuxerId;
+//}THM_INFO;
+
+typedef struct
 {
-    THM_PIC thm_pic;
-    int mMuxerId;
-}THM_INFO;
+    int mStrmIdsCnt; //-1: all streams are valid. >=0: some or none stream are valid.
+    int mStrmIds[MAX_TRACK_COUNT];
+}MuxStreamIdsInfo;
+
 /************************************************************************************************************************/
 
 /* invlalid channel ID */

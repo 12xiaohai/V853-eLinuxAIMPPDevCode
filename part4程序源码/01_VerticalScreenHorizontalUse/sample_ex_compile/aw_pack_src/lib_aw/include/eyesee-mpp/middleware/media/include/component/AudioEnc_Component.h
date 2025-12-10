@@ -32,7 +32,7 @@
 #include "ComponentCommon.h"
 #include "tmessage.h"
 #include "tsemaphore.h"
-
+#include <aencoder.h>
 
 //------------------------------------------------------------------------------------
 
@@ -56,6 +56,7 @@ typedef struct AUDIOENCDATATYPE {
     COMP_CALLBACKTYPE *pCallbacks;
     void* pAppData;
     COMP_HANDLETYPE hSelf;
+    char mThreadName[32];
 
     COMP_PORT_PARAM_TYPE sPortParam;
     COMP_PARAM_PORTDEFINITIONTYPE sInPortDef;

@@ -32,7 +32,7 @@ extern "C" {
 
 ERRORTYPE MUX_Construct(void);
 ERRORTYPE MUX_Destruct(void);
-MM_COMPONENTTYPE *MUX_GetGroupComp(PARAM_IN MPP_CHN_S *pMppChn);
+MM_COMPONENTTYPE *MUX_GetChnComp(PARAM_IN MPP_CHN_S *pMppChn);
 
 #ifdef __cplusplus
 }

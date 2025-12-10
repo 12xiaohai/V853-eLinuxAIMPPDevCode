@@ -99,7 +99,8 @@ void ParseBitstreamSeekSync(AudioDecoderLib* pDecoder, int64_t nSeekTime, int nG
 
 int InitializeAudioDecodeLib(AudioDecoderLib*    pDecoder,
                AudioStreamInfo* pAudioStreamInfo,
-               BsInFor *pBsInFor);
+               BsInFor *pBsInFor,
+               AudioDecBufInfo *pAudioDecBufInfo);
 int DecodeAudioFrame(AudioDecoderLib* pDecoder,
                char*        ppBuf,
                int*          pBufSize);

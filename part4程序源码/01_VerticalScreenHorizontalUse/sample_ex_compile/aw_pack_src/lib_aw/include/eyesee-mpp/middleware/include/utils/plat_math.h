@@ -71,10 +71,10 @@ extern "C"{
 #define MULTI_OF_2_POWER(x,a)    (!((x) & ((a) - 1) ) )
 #define CEILING_2_POWER(x,a)     ( ((x) + ((a) - 1) ) & ( ~((a) - 1) ) )
 #define FLOOR_2_POWER(x,a)       (  (x) & (~((a) - 1) ) )
-#ifndef ALIGN
-#define ALIGN(x, a)              ((a) * (((x) + (a) - 1) / (a)))
+#ifndef AWALIGN
+#define AWALIGN(x, a)              ((a) * (((x) + (a) - 1) / (a)))
 #endif
-#define HICEILING(x, a)           (((x)+(a)-1)/(a))
+#define AWCEILING(x, a)           (((x)+(a)-1)/(a))
 
 /******************************************************************************
 ** Get the span between two unsinged number, such as
@@ -270,6 +270,7 @@ __inline static uint64_t GetSysTimeByUsec(void)
     return  (stTime.tv_sec * 1000000LLU) + stTime.tv_usec;
 }
 
+#define AW_ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
 #ifdef __cplusplus
 }

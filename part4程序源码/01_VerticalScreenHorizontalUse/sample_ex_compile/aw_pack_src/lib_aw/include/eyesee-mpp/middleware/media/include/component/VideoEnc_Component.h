@@ -48,14 +48,14 @@
 
 #define BITSTREAM_FRAME_SIZE    (256)   // ref to BITSTREAM_FRAME_FIFO_SIZE
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+#define VENC_SEI_DATA_NUM_MAX  (8)
 
 
 typedef enum COMP_RECORD_TYPE
 {
     COMP_RECORD_TYPE_NORMAL = 0,
-    COMP_RECORD_TYPE_TIMELAPSE, //selected encoded frame interval is long(0.1fps), but play as camera capture frame rate. camera capture in normal frame rate, but select only few to encode.
-    COMP_RECORD_TYPE_SLOW,  //encode every input frame, but reset its pts to play as another frame rate. e.g.,frame interval is small(120fps), but play as 30fps.
+    COMP_RECORD_TYPE_TIMELAPSE, //time-lapse. selected encoded frame interval is long(0.1fps), but play as camera capture frame rate. camera capture in normal frame rate, but select only few to encode.
+    COMP_RECORD_TYPE_SLOW,  //slow-motion. encode every input frame, but reset its pts to play as another frame rate. e.g.,frame interval is small(120fps), but play as 30fps.
 } COMP_RECORD_TYPE;
 
 typedef struct FRAMEINFOTYPE {
@@ -102,10 +102,10 @@ typedef struct SoftFrameRateCtrl
 typedef struct CaptureTimeLapse
 {
     COMP_RECORD_TYPE recType;
-    double capFrameIntervalUs;     //two frame's pts interval which we select to encode.
-    double videoFrameIntervalUs;   //the frame reconfig_pts interval after encode, 
-    double lastCapTimeUs;          //base on last encoded frame's pts, == n*capFrameIntervalUs + first_pts.
-    double lastTimeStamp;          //we set last encoded frame's reconfig_pts. unit:us
+    double capFrameIntervalUs;     //two frame's pts interval which we select to encode. only used for timelapse.
+    double videoFrameIntervalUs;   //the frame reconfig_pts interval after encode.
+    double lastCapTimeUs;          //based on last encoded frame's pts, == n*capFrameIntervalUs + first_pts. The expected pts of the last frame. only used for timelapse.
+    double lastTimeStamp;          //we set current encoded frame's reconfig_pts, its name is not right. unit:us
 } CaptureTimeLapse;
 
 typedef struct VEncRoiCfgNode
@@ -146,6 +146,7 @@ typedef struct VIDEOENCDATATYPE {
     int mOutCacheTime;  //unit:ms, next components will cache encoded data, so venc can decrease vbvSize.
     //VIDEOINFO_t     mSourceVideoInfo;
     VENC_CHN_ATTR_S mEncChnAttr;
+    VENC_CHN_ATTR_S mUserEncChnAttr;
     VENC_PARAM_INTRA_REFRESH_S mEncIntraRefreshParam;
     VENC_COLOR2GREY_S   mColor2GreyParam;
     s2DfilterParam m2DfilterParam;
@@ -192,8 +193,8 @@ typedef struct VIDEOENCDATATYPE {
     VENC_PARAM_JPEG_S mJpegParam;   //for jpeg encode.
     VENC_EXIFINFO_S mJpegExifInfo;
 
-    BOOL csi_first_frame;
-    int64_t  csi_base_time;
+    BOOL csi_first_frame; //TRUE: wait to meet first frame. FALSE: meet first frame done.
+    int64_t  csi_base_time; //take first received frame pts as base time.
     int64_t mPrevInputPts;   //unit:us
     //int buf_id; //used for releasing camera frame
     pthread_mutex_t mutex_fifo_ops_lock;
@@ -220,22 +221,30 @@ typedef struct VIDEOENCDATATYPE {
     pthread_cond_t          mOutFrameFullCondition;
     pthread_cond_t          mOutFrameCondition; //for non-tunnel mode, wait outFrame coming!
 
-    cdx_sem_t mInputFrameBufDoneSem; // for ForbidDiscardingFrame=TRUE flow, used to let the inputBufDone callback notify the venc component thread to fetch the encoding result.
+    /**
+      for ForbidDiscardingFrame mode, used to let the inputBufDone callback notify the venc component thread to fetch the encoding result.
+    */
+    cdx_sem_t mInputFrameBufDoneSem;
 
-    int mFlagDoNotSendOrigFrameToVencLib; // only used by ComponentThread()
+    /**
+      for ForbidDiscardingFrame mode, only used by ComponentThread(). when previous frame sent to vencLib is not encoded,
+      set this flag to true, then continue to wait previous frame to be encoded.
+    */
+    int mFlagDoNotSendOrigFrameToVencLib;
 
     double mVbvBufTime;
     SoftFrameRateCtrl mSoftFrameRateCtrl;
-    BOOL timeLapseEnable;
+    BOOL timeLapseEnable; //enable time-lapse or slow-motion.
     pthread_mutex_t mCapTimeLapseLock;
     CaptureTimeLapse mCapTimeLapse;
     VencBaseConfig mBaseConfig;
 
     //statistics
     int bitStreamBufFullCnt;    //continuous bit stream full count.
-    int mDbgEncodeCnt;
+    int mEncodeTotalCnt;
     int mEncodeTimeoutCnt;
-    int mDiscardFrameCnt;
+    int mEncodeVbvFulDiscardFrameCnt;
+    int mEncodeDropFrameCnt;
     int mEncodeSuccessCount;
     int64_t mTotalEncodeSuccessDuration;
     unsigned int mStatMaxFrameSize;
@@ -251,6 +260,7 @@ typedef struct VIDEOENCDATATYPE {
     int venc_first_frm;
     //for debug
     int mbDebug_IgnoreAllFrame;
+    int mbDebug_VencOutBitrateStatByKeyFrameInvertalFlag;
 
     BOOL mbEnableMotionSearch;
     VencMotionSearchResult mMotionResult;
@@ -268,6 +278,37 @@ typedef struct VIDEOENCDATATYPE {
     BOOL mbEnableWbYUV;
 
     BOOL bForceKeyFrameFlag;
+
+    int mD3DInIFrmEnable;
+    int mTightMbQpEnable;
+    VencExtremeD3DParam mExtremeD3D;
+
+    BOOL mbEnableRegionD3D;
+    VencRegionD3DResult mRegionD3DResult;
+    VencRegionD3DParam mRegionD3DParam;
+
+    BOOL mbExceptionCase;
+
+    BOOL mbWbYuvEnable;
+
+    int mvipp_id;
+
+    //uint64_t mInputFrameToVeTimeMs; //for debug.
+    //uint64_t mOutputStreamFromVeTimeMs; //for debug.
+    unsigned int mInputFrameCnt; //for debug
+    unsigned int mOutputStreamCnt; //for debug
+    VencForceConfWin mForceConfWin;
+
+    VencSeiData mSeiData[VENC_SEI_DATA_NUM_MAX];
+    uint64_t mLastSetSeiDataTimeMs;
+    unsigned int mLastSeiDataConfigLevel;
+
+    int mChromaQPOffset;
+    VencH264ConstraintFlag mH264ConstraintFlag;
+    VencVe2IspD2DLimit mVe2IspD2DLimit;
+    unsigned int mbMediaDebugFlag;
+    BOOL mbDisableVe2Isp;
+    BOOL mbDisableIsp2Ve;
 } VIDEOENCDATATYPE;
 
 //private interface

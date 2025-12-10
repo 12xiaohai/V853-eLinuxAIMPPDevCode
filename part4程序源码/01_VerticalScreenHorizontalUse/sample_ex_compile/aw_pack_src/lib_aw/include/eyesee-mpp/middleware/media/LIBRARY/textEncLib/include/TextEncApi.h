@@ -121,7 +121,7 @@ typedef struct EncPacket_tag
 {
     char out_data[TEXTENC_PACKET_SIZE];
     int buf_id;
-    long long pts;
+    long long pts; //unit:us
 } EncPacket_t;
 
 typedef struct OutFrameManager_tag
@@ -143,7 +143,7 @@ typedef struct TextPacket_tag       // TextSrc_Comp's output to TextEnc_Comp's i
     GSENSOR_t   gsensor_data[FIFO_GSENSOR_LEVEL];
     ADAS_t      adas_data[FIFO_ADAS_LEVEL];
     DRIVER_ID_t driver_id_data;
-    long long   pts;
+    long long   pts; //unit:us
 } TextPacket_t;
 
 typedef struct InFrameManager_tag
@@ -180,7 +180,7 @@ typedef struct TEXTENCCONTENT_t {
     int (*ShowTextEncMgrData)(void *handle);                            // for debug
     int (*ShowInFrameData)(void *handle);                               // for debug
     int (*ShowOutFrameData)(void *handle, int cur_rid, int pkt_pos);    // for debug
-    int (*RequestWriteBuf)(void *handle, void *pInbuf,int size);                 // src_out_port -> enc_in_port
+    int (*RequestWriteBuf)(void *handle, void *pInbuf, int size, int64_t pts);                 // src_out_port -> enc_in_port
     int (*TextEncodePro)(void *handle);                                 // enc_in_port -> enc_out_port
     int (*GetValidEncPktCnt)(void *handle);                             // packet cnt in fifo which need be sent to RecRender_Comp
     int (*GetEmptyOutFrameCnt)(void *handle);                           // out_buf_packet_unused = 0, OUTPUTUNDERFLOW

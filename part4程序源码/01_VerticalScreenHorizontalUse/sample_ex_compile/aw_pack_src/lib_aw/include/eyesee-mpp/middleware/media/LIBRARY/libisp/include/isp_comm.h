@@ -18,19 +18,25 @@
 #define ISP_REG1_TBL_LENGTH			17
 #define ISP_REG_TBL_NODE_LENGTH			9
 
-
-#if (ISP_VERSION == 600)
+#if (ISP_VERSION >= 600)
 #define USE_ENCPP
 #define ISP_GAMMA_TBL_LENGTH			(3*1024)
 
-
 //ISP LOAD DRAM
+#if (ISP_VERSION >= 606)
+#define ISP_LOAD_DRAM_SIZE			0xaf40
+#else
 #define ISP_LOAD_DRAM_SIZE			0x7700
+#endif
 #define ISP_LOAD_REG_SIZE			0x1000
 #define ISP_FE_TABLE_SIZE			0x1800
 #define ISP_BAYER_TABLE_SIZE			0x2600
 #define ISP_RGB_TABLE_SIZE			0x1200
+#if (ISP_VERSION >= 606)
+#define ISP_YUV_TABLE_SIZE			0x4F40
+#else
 #define ISP_YUV_TABLE_SIZE			0x1700
+#endif
 #define ISP_DBG_TABLE_SIZE			0x0000
 
 /*fe table*/
@@ -65,12 +71,23 @@
 #define ISP_RGB_DRC_TBL_SIZE			0x0200
 #define ISP_GAMMA_TBL_SIZE			0x1000
 
+#if (ISP_VERSION >= 606)
+/*yuv table*/
+#define ISP_CEM_MEM_OFS				0x0000
+
+#define ISP_CEM_TBL0_SIZE			0x1700
+#define ISP_CEM_TBL1_SIZE			0x1440
+#define ISP_CEM_TBL2_SIZE			0x1200
+#define ISP_CEM_TBL3_SIZE			0x1200
+#define ISP_CEM_MEM_SIZE (ISP_CEM_TBL0_SIZE + ISP_CEM_TBL1_SIZE + ISP_CEM_TBL2_SIZE + ISP_CEM_TBL3_SIZE)
+#else
 /*yuv table*/
 #define ISP_CEM_MEM_OFS				0x0000
 
 #define ISP_CEM_TBL0_SIZE			0x0cc0
 #define ISP_CEM_TBL1_SIZE			0x0a40
 #define ISP_CEM_MEM_SIZE (ISP_CEM_TBL0_SIZE + ISP_CEM_TBL1_SIZE)
+#endif
 
 //ISP SAVE DRAM
 #define ISP_SAVE_DRAM_SIZE			0x6a00
@@ -461,6 +478,7 @@ enum pltm_dynamic_cfg {
 	ISP_PLTM_DYNAMIC_SHP_LS_COMP = 8,
 	ISP_PLTM_DYNAMIC_D2D_COMP = 9,
 	ISP_PLTM_DYNAMIC_D3D_COMP = 10,
+	ISP_PLTM_DYNAMIC_DARKNEST_RT = 11,
 	ISP_PLTM_DYNAMIC_MAX,
 };
 
@@ -620,6 +638,7 @@ enum isp_pltm_comm_cfg {
 	ISP_PLTM_INTERVAL       = 41,
 	ISP_PLTM_DARK_LOW_TH    = 42,
 	ISP_PLTM_DARK_HIGH_TH   = 43,
+	ISP_PLTM_DARKNEST_NUM   = 44,
 	ISP_PLTM_MAX,
 };
 
@@ -678,14 +697,6 @@ enum isp_platform {
 	ISP_PLATFORM_NUM,
 };
 
-#if (ISP_VERSION >= 520)
-struct isp_wdr_mode_cfg {
-	unsigned char wdr_ch_seq;
-	unsigned char wdr_exp_seq;
-	unsigned char wdr_mode;
-};
-#endif
-
 struct isp_size {
 	HW_U32 width;
 	HW_U32 height;
@@ -697,10 +708,10 @@ enum enable_flag {
 };
 
 enum wdr_mode {
-	WDR_2FDOL = 0,
-	WDR_2FCMD = 1,
-	WDR_3FDOL = 2,
-	WDR_3FCMD = 3,
+	WDR_1FCH = 0,
+	WDR_2FCH = 1,
+	WDR_3FCH = 2,
+	WDR_4FCH = 3,
 };
 
 enum channl_data_mode {
@@ -808,6 +819,12 @@ enum isp_ae_stat_mode {
 	AE_STAT_2CH = 1,
 	AE_STAT_3CH = 2,
 	AE_STAT_4CH = 3,
+};
+
+enum isp_dg_mode {
+	DG_AFTER_WDR = 0,
+	DG_BEFORE_WDR = 1,
+	DG_AFTER_WDR_ADAPT = 2, /* Use for low-end sensors with very low analog gain, such as f37 */
 };
 
 enum isp_proc_mode { /*wdr stitch input*/
@@ -1326,9 +1343,10 @@ struct encpp_dynamic_sharp_config {
 };
 
 struct enc_VencIsp2VeParam {
-    unsigned char encpp_en;
-    struct encpp_static_sharp_config mStaticSharpCfg;
-    struct encpp_dynamic_sharp_config mDynamicSharpCfg;
+	unsigned char encpp_en;
+	struct encpp_static_sharp_config mStaticSharpCfg;
+	struct encpp_dynamic_sharp_config mDynamicSharpCfg;
+	struct isp_ae_stats_s *AeStatsInfo;
 };
 
 struct encoder_3dnr_config {
@@ -1356,8 +1374,8 @@ struct enc_MovingLevelInfo {
 };
 
 struct enc_VencVe2IspParam {
-//	int d2d_level; //[1,1024], 256 means 1X
-//	int d3d_level; //[1,1024], 256 means 1X
+	int d2d_level; //[1,1024], 256 means 1X
+	int d3d_level; //[1,1024], 256 means 1X
 	struct enc_MovingLevelInfo mMovingLevelInfo;
 };
 
@@ -1373,41 +1391,6 @@ struct npu_face_nr_config {
 	struct isp_h3a_coor_win face_roi[20];
 };
 
-struct isp_saturation_config {
-	HW_S16 satu_r;
-	HW_S16 satu_g;
-	HW_S16 satu_b;
-	HW_S16 satu_gain;
-};
-
-#if (ISP_VERSION >= 520)
-struct isp_dehaze_config {
-	unsigned char dog_width_set;
-	unsigned char dog_stat_num_power;
-	unsigned short bright_scale;
-	unsigned char blc_num_w;
-	unsigned char blc_num_h;
-	unsigned char blc_min_ratio;
-	unsigned char fogw;
-	unsigned char hazew;
-	unsigned short blc_w;
-	unsigned short blc_h;
-	unsigned short blc_w_rec;
-	unsigned short blc_h_rec;
-	unsigned short airlight_r;
-	unsigned short airlight_g;
-	unsigned short airlight_b;
-	unsigned int airlight_r_rec;
-	unsigned int airlight_g_rec;
-	unsigned int airlight_b_rec;
-	unsigned int airlight_stat_num_th;
-	unsigned short airlight_stat_value_th;
-	unsigned short protect_dark_mean;
-	unsigned short protect_proj_mean;
-};
-#endif
-
-#if (ISP_VERSION >= 521)
 struct isp_af_en_config {
 	unsigned char af_iir0_en;
 	unsigned char af_fir0_en;
@@ -1463,105 +1446,6 @@ struct isp_af_filter_config {
 	short af_g_offset;
 	short af_b_offset;
 };
-#else
-struct isp_af_en_config {
-	unsigned char af_iir0_en;
-	unsigned char af_iir1_en;
-	unsigned char af_fir0_en;
-	unsigned char af_fir1_en;
-	unsigned char af_iir0_sec0_en;
-	unsigned char af_iir0_sec1_en;
-	unsigned char af_iir0_sec2_en;
-	unsigned char af_iir1_sec0_en;
-	unsigned char af_iir1_sec1_en;
-	unsigned char af_iir1_sec2_en;
-	unsigned char af_iir0_ldg_en;
-	unsigned char af_iir1_ldg_en;
-	unsigned char af_fir0_ldg_en;
-	unsigned char af_fir1_ldg_en;
-	unsigned char af_iir_ds_en;
-	unsigned char af_fir_ds_en;
-	unsigned char af_offset_en;
-	unsigned char af_peak_en;
-	unsigned char af_squ_en;
-};
-
-struct isp_af_filter_config {
-	unsigned short af_iir0_g0;
-	unsigned short af_iir0_g1;
-	unsigned short af_iir0_g2;
-	unsigned short af_iir0_g3;
-	unsigned short af_iir0_g4;
-	unsigned short af_iir0_g5;
-	unsigned short af_iir1_g0;
-	unsigned short af_iir1_g1;
-	unsigned short af_iir1_g2;
-	unsigned short af_iir1_g3;
-	unsigned short af_iir1_g4;
-	unsigned short af_iir1_g5;
-	unsigned short af_iir0_s0;
-	unsigned short af_iir1_s0;
-	unsigned short af_iir0_s1;
-	unsigned short af_iir1_s1;
-	unsigned short af_iir0_s2;
-	unsigned short af_iir1_s2;
-	unsigned short af_iir0_s3;
-	unsigned short af_iir1_s3;
-	unsigned char af_fir0_g0;
-	unsigned char af_fir0_g1;
-	unsigned char af_fir0_g2;
-	unsigned char af_fir0_g3;
-	unsigned char af_fir0_g4;
-	unsigned char af_fir1_g0;
-	unsigned char af_fir1_g1;
-	unsigned char af_fir1_g2;
-	unsigned char af_fir1_g3;
-	unsigned char af_fir1_g4;
-	unsigned char af_iir0_dilate;
-	unsigned char af_iir1_dilate;
-	unsigned char af_iir0_ldg_lgain;
-	unsigned char af_iir0_ldg_hgain;
-	unsigned char af_iir1_ldg_lgain;
-	unsigned char af_iir1_ldg_hgain;
-	unsigned char af_iir0_ldg_lth;
-	unsigned char af_iir0_ldg_hth;
-	unsigned char af_iir1_ldg_lth;
-	unsigned char af_iir1_ldg_hth;
-	unsigned char af_fir0_ldg_lgain;
-	unsigned char af_fir0_ldg_hgain;
-	unsigned char af_fir1_ldg_lgain;
-	unsigned char af_fir1_ldg_hgain;
-	unsigned char af_fir0_ldg_lth;
-	unsigned char af_fir0_ldg_hth;
-	unsigned char af_fir1_ldg_lth;
-	unsigned char af_fir1_ldg_hth;
-	unsigned char af_iir0_ldg_lslope;
-	unsigned char af_iir0_ldg_hslope;
-	unsigned char af_iir1_ldg_lslope;
-	unsigned char af_iir1_ldg_hslope;
-	unsigned char af_fir0_ldg_lslope;
-	unsigned char af_fir0_ldg_hslope;
-	unsigned char af_fir1_ldg_lslope;
-	unsigned char af_fir1_ldg_hslope;
-	unsigned char af_iir0_core_th;
-	unsigned char af_iir1_core_th;
-	unsigned char af_iir0_core_peak;
-	unsigned char af_iir1_core_peak;
-	unsigned char af_fir0_core_th;
-	unsigned char af_fir1_core_th;
-	unsigned char af_fir0_core_peak;
-	unsigned char af_fir1_core_peak;
-	unsigned char af_iir0_core_slope;
-	unsigned char af_iir1_core_slope;
-	unsigned char af_fir0_core_slope;
-	unsigned char af_fir1_core_slope;
-	unsigned char af_hlt_th;
-	unsigned char af_hlt_cnt_shift;
-	unsigned short af_r_offset;
-	unsigned short af_g_offset;
-	unsigned short af_b_offset;
-};
-#endif
 
 enum isp_output_speed {
 	ISP_OUTPUT_SPEED_0 = 0,
@@ -1645,6 +1529,11 @@ typedef struct isp_sensor_info {
 	HW_U32 gain_max;
 	HW_U32 exp_min;
 	HW_U32 exp_max;
+	HW_U32 exp_mid_min;
+	HW_U32 exp_mid_max;
+	HW_U32 exp_short_min;
+	HW_U32 exp_short_max;
+	HW_U16 width_overlayer;
 	HW_S16 sensor_width;
 	HW_S16 sensor_height;
 	HW_U16 hoffset;
@@ -1699,6 +1588,11 @@ enum exposure_cfg_type {
 	AE_HIST_BRIGHT_WEIGHT_MIN = 12,
 	AE_HIST_BRIGHT_WEIGHT_MAX = 13,
 
+	AE_WDR_RATIO_SPEED = 14,
+	AE_FACE_TARGET = 15,
+	AE_DYNAMIC_RESERVE_1 = 16,
+	AE_DYNAMIC_RESERVE_2 = 17,
+	AE_DYNAMIC_RESERVE_3 = 18,
 	ISP_EXP_CFG_MAX,
 };
 
@@ -1774,6 +1668,7 @@ enum wdr_split_cfg_type {
 
 enum wdr_comm_cfg_type {
 	WDR_COMM_OUT_SEL = 0,
+	WDR_COMM_MODE,
 	WDR_COMM_LM_EXP_RATIO,
 	WDR_COMM_MS_EXP_RATIO,
 	WDR_COMM_LWB_NRATIO,
@@ -1832,6 +1727,12 @@ struct sensor_temp_info {
 	HW_S16 temperature_param[TEMP_COMP_MAX];
 };
 
+struct sensor_flip_info {
+	HW_U8 enable;
+	HW_U8 hflip;
+	HW_U8 vflip;
+};
+
 struct ae_table {
 	HW_U32 min_exp;  //us
 	HW_U32 max_exp;
@@ -1846,6 +1747,12 @@ struct ae_table_info {
 	HW_S32 length;
 	HW_S32 ev_step;
 	HW_S32 shutter_shift;
+};
+
+enum stitch_mode_t {
+	STITCH_NONE = 0,
+	STITCH_2IN1_LINNER,
+	STITCH_MODE_MAX,
 };
 
 #endif //__BSP__ISP__COMM__H

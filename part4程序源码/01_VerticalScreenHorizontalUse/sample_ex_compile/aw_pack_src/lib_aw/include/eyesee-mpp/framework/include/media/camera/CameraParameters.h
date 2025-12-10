@@ -17,7 +17,7 @@
 #include <mm_comm_video.h>
 #include <mm_comm_vi.h>
 #include <mpi_isp.h>
-
+#include <vencoder.h>
 
 #include <string>
 #include <vector>
@@ -415,6 +415,42 @@ public:
     void setShutTime(VI_SHUTTIME_CFG_S &value);
     void getShutTime(VI_SHUTTIME_CFG_S &value) const;
 
+    inline void enableEncpp(bool enable)
+    {
+        mbEncppEnable = enable;
+    }
+    inline bool getEncppEnable()
+    {
+        return mbEncppEnable;
+    }
+
+    inline void setEnvLv(int value)
+    {
+        mEnvLv = value;
+    }
+    inline int getEnvLv()
+    {
+        return mEnvLv;
+    }
+
+    inline void setAeWeightLum(int value)
+    {
+        mAeWeightLum = value;
+    }
+    inline int getAeWeightLum()
+    {
+        return mAeWeightLum;
+    }
+
+    void setIspAeState(struct isp_ae_stats_s& IspAeState);
+    struct isp_ae_stats_s& getIspAeState(void);
+
+    struct enc_VencIsp2VeParam& getIsp2VeParam(void);
+    void setIsp2VeParam(struct enc_VencIsp2VeParam& Isp2VeParam);
+
+    struct enc_VencVe2IspParam& getVe2IspParam();
+    void setVe2IspParam(struct enc_VencVe2IspParam& Ve2IspParam);
+
 private:
     friend class VIChannel;
     friend class VIDevice;
@@ -504,6 +540,15 @@ private:
 
     bool mOnlineEnable;    /* 1: online, 0: offline.*/
     int mOnlineShareBufNum; /* only for online. Number of share buffers of CSI and VE, support 0/1/2.*/
+
+    bool mbEncppEnable;
+
+    int mEnvLv;
+    int mAeWeightLum;
+    struct isp_ae_stats_s mAeState;
+    struct enc_VencIsp2VeParam mIsp2VeParam;
+
+    struct enc_VencVe2IspParam mVe2IspParam;
 
     std::map<std::string, std::string> mMap;
 }; /* CameraParameters */

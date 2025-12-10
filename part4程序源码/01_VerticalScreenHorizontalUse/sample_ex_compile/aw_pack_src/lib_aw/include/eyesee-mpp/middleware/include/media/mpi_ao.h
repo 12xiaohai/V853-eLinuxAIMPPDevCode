@@ -1,3 +1,4 @@
+/** @file */
 /******************************************************************************
   Copyright (C), 2001-2016, Allwinner Tech. Co., Ltd.
  ******************************************************************************
@@ -27,12 +28,25 @@ extern "C"
 {
 #endif
 
-ERRORTYPE AW_MPI_AO_SetPubAttr(AUDIO_DEV AudioDevId,AO_CHN AoChn, const AIO_ATTR_S *pstAttr);
-ERRORTYPE AW_MPI_AO_GetPubAttr(AUDIO_DEV AudioDevId,AO_CHN AoChn, AIO_ATTR_S *pstAttr);
-ERRORTYPE AW_MPI_AO_ClrPubAttr(AUDIO_DEV AudioDevId,AO_CHN AoChn);
+/**
+  set attr of underlying ao output alsa-plugin, i.e. pcm.PlaybackRateDmix of asound.conf.
+  must call it before AW_MPI_AO_CreateChn().
 
-ERRORTYPE AW_MPI_AO_Enable(AUDIO_DEV AudioDevId,AO_CHN AoChn);
-ERRORTYPE AW_MPI_AO_Disable(AUDIO_DEV AudioDevId,AO_CHN AoChn);
+  @param AudioDevId
+    audioDevice
+  @param pstAttr
+    use pstAttr->enSamplerate, pstAttr->mPtNumPerFrm(i.e. period_size), pstAttr->mChnCnt now.
+    In common, pstAttr->mPtNumPerFrm = 960.
+*/
+//ERRORTYPE AW_MPI_AO_SetPubAttr(AUDIO_DEV AudioDevId, const AIO_ATTR_S *pstAttr);
+//ERRORTYPE AW_MPI_AO_GetPubAttr(AUDIO_DEV AudioDevId, AIO_ATTR_S *pstAttr);
+/**
+  restore attr of underlying ao output alsa-plugin to default value.
+*/
+//ERRORTYPE AW_MPI_AO_ClrPubAttr(AUDIO_DEV AudioDevId);
+
+//ERRORTYPE AW_MPI_AO_Enable(AUDIO_DEV AudioDevId,AO_CHN AoChn);
+//ERRORTYPE AW_MPI_AO_Disable(AUDIO_DEV AudioDevId,AO_CHN AoChn);
 
 ERRORTYPE AW_MPI_AO_CreateChn(AUDIO_DEV AudioDevId, AO_CHN AoChn);
 ERRORTYPE AW_MPI_AO_DestroyChn(AUDIO_DEV AudioDevId, AO_CHN AoChn);
@@ -61,6 +75,18 @@ ERRORTYPE AW_MPI_AO_SetDevHpf(AUDIO_DEV AudioDevId, int enable);
 
 ERRORTYPE AW_MPI_AO_SetDevVolume(AUDIO_DEV AudioDevId, int s32VolumeDb);
 ERRORTYPE AW_MPI_AO_GetDevVolume(AUDIO_DEV AudioDevId, int *ps32VolumeDb);
+/**
+  Set Soft Volume, based on softvol plugin.
+  @param [in] s32Volume
+    SoftVolume scope:[-52,50], means it can amplify or attenuate audio. According to asound.conf, [-26dB, 25dB].
+    when volume <=100, do not need use SetSoftVolume()(i.e., set soft volume to max volume).
+    SetDevVolume(volume), then SetSoftVolume(0).
+    when volume > 100, first SetDevVolume(100), then SetSoftVolume(volume>0)
+    when can't set devVolume(e.g. hdmi audio ouput), only softvolume can be used to adjust volume.
+*/
+ERRORTYPE AW_MPI_AO_SetSoftVolume(AUDIO_DEV AudioDevId, int s32Volume);
+ERRORTYPE AW_MPI_AO_GetSoftVolume(AUDIO_DEV AudioDevId, int *ps32Volume);
+
 
 ERRORTYPE AW_MPI_AO_SetDevMute(AUDIO_DEV AudioDevId, BOOL bEnable, AUDIO_FADE_S *pstFade);
 ERRORTYPE AW_MPI_AO_GetDevMute(AUDIO_DEV AudioDevId, BOOL *pbEnable, AUDIO_FADE_S *pstFade);
@@ -75,7 +101,8 @@ ERRORTYPE AW_MPI_AO_GetVqeAttr(AUDIO_DEV AudioDevId, AO_CHN AoChn, AO_VQE_CONFIG
 ERRORTYPE AW_MPI_AO_EnableVqe(AUDIO_DEV AudioDevId, AO_CHN AoChn);
 ERRORTYPE AW_MPI_AO_DisableVqe(AUDIO_DEV AudioDevId, AO_CHN AoChn);
 ERRORTYPE AW_MPI_AO_EnableSoftDrc(AUDIO_DEV AudioDevId, AO_CHN AoChn,AO_DRC_CONFIG_S *pstDrcConfig);
-ERRORTYPE AW_MPI_AO_EnableAgc(AUDIO_DEV AudioDevId, AO_CHN AoChn,my_agc_handle *pstAgcConfig);
+ERRORTYPE AW_MPI_AO_EnableAgc(AUDIO_DEV AudioDevId, AO_CHN AoChn, AGC_FLOAT_CONFIG_S *pstAgcConfig);
+ERRORTYPE AW_MPI_AO_DisableAgc(AUDIO_DEV AudioDevId, AO_CHN AoChn);
 
 ERRORTYPE AW_MPI_AO_SetStreamEof(AUDIO_DEV AudioDevId, AO_CHN AoChn, BOOL bEofFlag, BOOL bDrainFlag);
 
@@ -84,6 +111,9 @@ ERRORTYPE AW_MPI_AO_QueryFileStatus(AUDIO_DEV AudioDevId, AO_CHN AoChn, AUDIO_SA
 
 ERRORTYPE AW_MPI_AO_SetPA(AUDIO_DEV AudioDevId, BOOL bLevelVal);
 ERRORTYPE AW_MPI_AO_GetPA(AUDIO_DEV AudioDevId, BOOL *pbLevelVal);
+
+ERRORTYPE AW_MPI_AO_SetChnVps(AUDIO_DEV AudioDevId, AO_CHN AoChn, float fVps);
+ERRORTYPE AW_MPI_AO_GetChnVps(AUDIO_DEV AudioDevId, AO_CHN AoChn, float *pfVps);
 
 #ifdef __cplusplus
 }

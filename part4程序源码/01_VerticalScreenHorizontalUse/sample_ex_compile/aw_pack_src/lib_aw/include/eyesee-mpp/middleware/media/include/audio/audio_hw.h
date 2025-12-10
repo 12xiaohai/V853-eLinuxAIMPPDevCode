@@ -139,6 +139,7 @@ ERRORTYPE audioHw_AI_GetVolume(AUDIO_DEV AudioDevId, int *ps32VolumeDb);
 ERRORTYPE audioHw_AI_SetMute(AUDIO_DEV AudioDevId, int bEnable);
 ERRORTYPE audioHw_AI_GetMute(AUDIO_DEV AudioDevId, int *pbEnable);
 BOOL audioHw_AI_IsDevStarted(AUDIO_DEV AudioDevId);
+ERRORTYPE audioHw_AI_SetCallback(AUDIO_DEV AudioDevId, void *cookie, AudioDevCallbackFuncType pAudioDevCallback);
 
 ERRORTYPE audioHw_AO_Dev_lock(AUDIO_DEV AudioDevId);
 ERRORTYPE audioHw_AO_Dev_unlock(AUDIO_DEV AudioDevId);
@@ -148,17 +149,22 @@ ERRORTYPE audioHw_AO_AddChannel_l(AUDIO_DEV AudioDevId, AO_CHANNEL_S *pChn);
 ERRORTYPE audioHw_AO_AddChannel(AUDIO_DEV AudioDevId, AO_CHANNEL_S *pChn);
 ERRORTYPE audioHw_AO_RemoveChannel(AUDIO_DEV AudioDevId, AO_CHANNEL_S *pChn);
 MM_COMPONENTTYPE *audioHw_AO_GetChnComp(PARAM_IN MPP_CHN_S *pMppChn);
-ERRORTYPE AudioHw_AO_SetPubAttr(AUDIO_DEV AudioDevId,AO_CHN AoChn, const AIO_ATTR_S *pstAttr);
-ERRORTYPE AudioHw_AO_GetPubAttr(AUDIO_DEV AudioDevId, AO_CHN AoChn,AIO_ATTR_S *pstAttr);
-ERRORTYPE audioHw_AO_ClrPubAttr(AUDIO_DEV AudioDevId, AO_CHN AoChn);
+//ERRORTYPE AudioHw_AO_SetPubAttr(AUDIO_DEV AudioDevId, const AIO_ATTR_S *pstAttr);
+//ERRORTYPE AudioHw_AO_GetPubAttr(AUDIO_DEV AudioDevId, AIO_ATTR_S *pstAttr);
+//ERRORTYPE audioHw_AO_ClrPubAttr(AUDIO_DEV AudioDevId);
+ERRORTYPE audioHw_AO_SetChnPubAttr(AUDIO_DEV AudioDevId,AO_CHN AoChn, const AIO_ATTR_S *pstAttr);
+ERRORTYPE audioHw_AO_GetChnPubAttr(AUDIO_DEV AudioDevId, AO_CHN AoChn,AIO_ATTR_S *pstAttr);
+ERRORTYPE audioHw_AO_ClrChnPubAttr(AUDIO_DEV AudioDevId, AO_CHN AoChn);
 ERRORTYPE audioHw_AO_SetTrackMode(AUDIO_DEV AudioDevId,AO_CHN AoChn ,AUDIO_TRACK_MODE_E enTrackMode);
 ERRORTYPE audioHw_AO_GetTrackMode(AUDIO_DEV AudioDevId,AO_CHN AoChn, AUDIO_TRACK_MODE_E *penTrackMode);
-ERRORTYPE audioHw_AO_Enable(AUDIO_DEV AudioDevId,AO_CHN AoChn);
-ERRORTYPE audioHw_AO_Disable(AUDIO_DEV AudioDevId,AO_CHN AoChn);
+ERRORTYPE audioHw_AO_EnableChn(AUDIO_DEV AudioDevId,AO_CHN AoChn);
+ERRORTYPE audioHw_AO_DisableChn(AUDIO_DEV AudioDevId,AO_CHN AoChn);
 ERRORTYPE audioHw_AO_SetDacDrc(AUDIO_DEV AudioDevId, int enable);
 ERRORTYPE audioHw_AO_SetDacHpf(AUDIO_DEV AudioDevId, int enable);
 ERRORTYPE audioHw_AO_SetVolume(AUDIO_DEV AudioDevId, int s32VolumeDb);
 ERRORTYPE audioHw_AO_GetVolume(AUDIO_DEV AudioDevId, int *ps32VolumeDb);
+ERRORTYPE audioHw_AO_SetSoftVolume(AUDIO_DEV AudioDevId, int s32Volume);
+ERRORTYPE audioHw_AO_GetSoftVolume(AUDIO_DEV AudioDevId, int *ps32Volume);
 ERRORTYPE audioHw_AO_SetMute(AUDIO_DEV AudioDevId, BOOL bEnable, AUDIO_FADE_S *pstFade);
 ERRORTYPE audioHw_AO_GetMute(AUDIO_DEV AudioDevId, BOOL *pbEnable, AUDIO_FADE_S *pstFade);
 ERRORTYPE audioHw_AO_SetPA(AUDIO_DEV AudioDevId, BOOL bHighLevel);
@@ -177,6 +183,9 @@ ERRORTYPE audioHw_AI_SuspendAns(AUDIO_DEV AudioDevId);
 ERRORTYPE audioHw_AI_ResumeAns(AUDIO_DEV AudioDevId);
 ERRORTYPE audioHw_AI_SuspendAec(AUDIO_DEV AudioDevId);
 ERRORTYPE audioHw_AI_ResumeAec(AUDIO_DEV AudioDevId);
+ERRORTYPE audioHw_AI_SetAgcDb(AUDIO_DEV AudioDevId, float fDbGain);
+ERRORTYPE audioHw_AI_GetAgcDb(AUDIO_DEV AudioDevId, float *pfVolumeDb);
+
 
 #ifdef __cplusplus
 }

@@ -9,6 +9,7 @@
 #define __EYESEE_LINUX__
 
 #ifdef __EYESEE_LINUX__
+    #include <utils/plat_log.h>
     #include <cutils/log.h>
     #define LOG_LEVEL_ERROR     _GLOG_ERROR
     #define LOG_LEVEL_WARNING   _GLOG_WARN
@@ -70,21 +71,21 @@
 #define LOGI(fmt, arg...)
 #define LOGV(fmt, arg...)
 
-#elif CONFIG_LOG_LEVEL == OPTION_LOG_LEVEL_WARNING
+#elif CONFIG_LOG_LEVEL == OPTION_LOG_LEVEL_WARN
 
 #define LOGE(fmt, arg...) AWLOG(LOG_LEVEL_ERROR, "\033[40;31m" fmt "\033[0m", ##arg)
 #define LOGW(fmt, arg...) AWLOG(LOG_LEVEL_WARNING, fmt, ##arg)
 #define LOGI(fmt, arg...)
 #define LOGV(fmt, arg...)
 
-#elif CONFIG_LOG_LEVEL == OPTION_LOG_LEVEL_DEFAULT
+#elif CONFIG_LOG_LEVEL == OPTION_LOG_LEVEL_DEBUG
 
 #define LOGE(fmt, arg...) AWLOG(LOG_LEVEL_ERROR, "\033[40;31m" fmt "\033[0m", ##arg)
 #define LOGW(fmt, arg...) AWLOG(LOG_LEVEL_WARNING, fmt, ##arg)
 #define LOGI(fmt, arg...) AWLOG(LOG_LEVEL_INFO, fmt, ##arg)
 #define LOGV(fmt, arg...)
 
-#elif CONFIG_LOG_LEVEL == OPTION_LOG_LEVEL_DETAIL
+#elif CONFIG_LOG_LEVEL == OPTION_LOG_LEVEL_VERBOSE
 
 #define LOGE(fmt, arg...) AWLOG(LOG_LEVEL_ERROR, "\033[40;31m" fmt "\033[0m", ##arg)
 #define LOGW(fmt, arg...) AWLOG(LOG_LEVEL_WARNING, fmt, ##arg)

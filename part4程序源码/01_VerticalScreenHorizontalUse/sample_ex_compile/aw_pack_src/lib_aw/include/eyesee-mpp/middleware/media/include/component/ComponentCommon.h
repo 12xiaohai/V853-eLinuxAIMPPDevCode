@@ -69,10 +69,10 @@ typedef enum CompInternalMsgType {
     TEncComp_InputTextAvailable = 0xB00,
     TEncComp_OutFrameAvailable,
     RecRenderComp_InputFrameAvailable = 0xC00,
-    VendorAddOutputSinkInfo,
-    VendorRemoveOutputSinkInfo,
-    SwitchFile, //deprecated.
-    SwitchFileDone,
+    //VendorAddOutputSinkInfo,
+    //VendorRemoveOutputSinkInfo,
+    //SwitchFile, //deprecated.
+    //SwitchFileDone,
     SwitchFileNormal,
     RecSink_InputPacketAvailable,
     RecSink_SwitchFd,
@@ -86,6 +86,9 @@ typedef enum CompInternalMsgType {
 	VViComp_LongExpEvent,
 	VViComp_StoreFrame,
 	VViComp_DropFrame,
+	VVideoInputHw_EnableVipp,
+	VVideoInputHw_DisableVipp,
+
     VIseComp_InputFrameAvailable = 0x1000,
     VendorAddIseChn,
     VendorRemoveIseChn,

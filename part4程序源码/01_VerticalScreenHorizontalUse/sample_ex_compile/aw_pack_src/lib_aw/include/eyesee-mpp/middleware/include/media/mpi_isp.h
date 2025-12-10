@@ -26,6 +26,7 @@
 #include "isp_tuning_priv.h"
 #include "isp_tuning.h"
 #include "isp_manage.h"
+#include "isp.h"
 
 #ifdef __cplusplus
 //#if __cplusplus
@@ -94,6 +95,17 @@ typedef enum __ISP_CFG_BIN_MODE
 	WDR_COLOR_CFG = 2, // wdr day config
 	WDR_IR_CFG = 3, // wdr ir config
 }ISP_CFG_BIN_MODE;
+
+typedef enum __ISP_AWB_STATS_MODE
+{
+	ISP_AWB_DEFAULT    = 0,
+	ISP0_AWB_MAINLY    = 1,
+	ISP1_AWB_MAINLY    = 2,
+	ISP0_ISP1_COMBINE  = 3,
+	ISP2_AWB_MAINLY    = 4,
+	ISP0_ISP2_COMBINE  = 5,
+	AWB_STATS_MODE_MAX = 6,
+}ISP_AWB_STATS_MODE;
 
 typedef struct
 {
@@ -1107,6 +1119,23 @@ typedef struct __ISP_3A_INFO_AWB {
 	isp_3a_info_awb isp_awb_info;
 }ISP_3A_INFO_AWB;
 
+struct isp_face_ae_attr_info {
+	RECT_S face_roi_rgn[AE_FACE_MAX_NUM];
+	HW_U8 enable;
+	HW_U8 vaild_face_num;
+	HW_S16 face_ae_tolerance;
+	HW_S16 face_ae_speed;
+	HW_S16 face_ae_target;
+	HW_S16 face_ae_delay_cnt;
+	HW_U16 face_up_percent;
+	HW_U16 face_down_percent;
+	HW_U16 ae_face_block_num_thrd;
+	HW_U16 ae_face_block_weight;
+	HW_U16 ae_over_face_max_exp_control;
+	HW_U16 ae_face_win_weight[16];
+	HW_S32 ae_face_pos_weight[64];
+};
+
 /****************************************************\
 	ISP
 \****************************************************/
@@ -1114,6 +1143,8 @@ AW_S32 AW_MPI_ISP_Init();
 AW_S32 AW_MPI_ISP_Run(ISP_DEV IspDev); // [0, 1]
 AW_S32 AW_MPI_ISP_Stop(ISP_DEV IspDev);
 AW_S32 AW_MPI_ISP_Exit();
+AW_S32 AW_MPI_ISP_EventsStop(ISP_DEV IspDev);
+AW_S32 AW_MPI_ISP_EventsRestart(ISP_DEV IspDev);
 
 // CFG ISP IP On or Off
 AW_S32 AW_MPI_ISP_SetModuleOnOff(ISP_DEV IspDev, ISP_MODULE_ONOFF *pstIspModuleOnOff);
@@ -1124,6 +1155,11 @@ AW_S32 AW_MPI_ISP_GetAe(ISP_DEV IspDev, ISP_AE_S *pAe);
 AW_S32 AW_MPI_ISP_SetAe(ISP_DEV IspDev, ISP_AE_S *pAe);
 AW_S32 AW_MPI_ISP_SwitchIspConfig(ISP_DEV IspDev, ISP_CFG_MODE ModeFlag);
 AW_S32 AW_MPI_ISP_ReadIspCfgBin(ISP_DEV IspDev, ISP_CFG_BIN_MODE ModeFlag, char *isp_cfg_bin_path);
+AW_S32 AW_MPI_ISP_SetAiIsp(ISP_DEV IspDev, isp_ai_isp_info *ai_isp_info_entity);
+AW_S32 AW_MPI_ISP_SetD3dLbcRatio(ISP_DEV IspDev, unsigned int ratio);
+AW_S32 AW_MPI_ISP_SetStitchMode(ISP_DEV IspDev, enum stitch_mode_t stitch_mode);
+AW_S32 AW_MPI_ISP_SetSensorFps(ISP_DEV IspDev, int fps);
+AW_S32 AW_MPI_ISP_GetSensorFps(ISP_DEV IspDev, int *fps);
 
 
 // ======================
@@ -1135,8 +1171,17 @@ AW_S32 AW_MPI_ISP_AE_SetISOSensitiveMode(ISP_DEV IspDev, int Mode); // [0:manual
 AW_S32 AW_MPI_ISP_AE_SetISOSensitive(ISP_DEV IspDev, int Value); // [0~7]->[auto,100,200,400,800,1600,3200,6400]
 AW_S32 AW_MPI_ISP_AE_SetMetering(ISP_DEV IspDev, int Value);        // [0:average,1:center,2:spot,3:matrix]
 AW_S32 AW_MPI_ISP_AE_SetGain(ISP_DEV IspDev, int Value);			// [0, 65535]
+AW_S32 AW_MPI_ISP_AE_SetLock(ISP_DEV IspDev, int Value);
+AW_S32 AW_MPI_ISP_AE_SetTable(ISP_DEV IspDev, struct ae_table_info *ae_table);
+AW_S32 AW_MPI_ISP_AE_SetRoiArea(ISP_DEV IspDev, SIZE_S Res, RECT_S RoiRgn, AW_U16 ForceAeTarget, AW_U16 Enable);
+AW_S32 AW_MPI_ISP_AE_SetRoiMeteringArea(ISP_DEV IspDev, SIZE_S Res, RECT_S RoiRgn);
+AW_S32 AW_MPI_ISP_AE_SetFaceAeCfg(ISP_DEV IspDev, struct isp_face_ae_attr_info FaceAeInfo, SIZE_S Res);
+AW_S32 AW_MPI_ISP_AE_GetFaceAeCfg(ISP_DEV IspDev, struct isp_face_ae_attr_info *FaceAeInfo);
+AW_S32 AW_MPI_ISP_ReadIspBin(ISP_DEV IspDev, ISP_CFG_BIN_MODE ModeFlag, char *IspCfgBinPath);
+
 AW_S32 AW_MPI_ISP_AWB_SetMode(ISP_DEV IspDev, int Value);		// [0:auto, 1:manual]
 AW_S32 AW_MPI_ISP_AWB_SetColorTemp(ISP_DEV IspDev, int Value); // [2, 9]
+AW_S32 AW_MPI_ISP_AWB_SetStatsSyncMode(ISP_DEV IspDev, ISP_AWB_STATS_MODE IspAwbStatsMode);
 AW_S32 AW_MPI_ISP_AWB_SetRGain(ISP_DEV IspDev, int Value);		// [256, 256 * 64]
 AW_S32 AW_MPI_ISP_AWB_SetBGain(ISP_DEV IspDev, int Value);		// [256, 256 * 64]
 AW_S32 AW_MPI_ISP_AWB_SetGrGain(ISP_DEV IspDev, int Value);		// [256, 256 * 64]
@@ -1154,8 +1199,13 @@ AW_S32 AW_MPI_ISP_AE_GetExposureBias(ISP_DEV IspDev, int *Value);
 AW_S32 AW_MPI_ISP_AE_GetExposure(ISP_DEV IspDev, int *Value);
 //add by jaosn
 AW_S32 AW_MPI_ISP_AE_GetExposureLine(ISP_DEV IspDev, int *Value);
+AW_S32 AW_MPI_ISP_AE_SetEvIdx(ISP_DEV IspDev, int Value);
 AW_S32 AW_MPI_ISP_AE_GetEvIdx(ISP_DEV IspDev, int *Value);
+AW_S32 AW_MPI_ISP_AE_GetMaxEvIdx(ISP_DEV IspDev, int *Value);
+AW_S32 AW_MPI_ISP_AE_GetAeLock(ISP_DEV IspDev, int *Value);
 AW_S32 AW_MPI_ISP_AE_GetISOLumIdx(ISP_DEV IspDev, int *Value);
+int AW_MPI_ISP_GetEnvLV(ISP_DEV IspDev);
+int AW_MPI_ISP_GetEvLvAdj(ISP_DEV IspDev);
 AW_S32 AW_MPI_ISP_AWB_GetCurColorT(ISP_DEV IspDev, int *Value);
 
 
@@ -1190,8 +1240,6 @@ AW_S32 AW_MPI_ISP_SetSaveCTX(ISP_DEV IspDev);
 /**
  * get environment luminance value.
  */
-int AW_MPI_ISP_GetEnvLV(ISP_DEV IspDev);
-int AW_MPI_ISP_GetEvLvAdj(ISP_DEV IspDev);
 int AW_MPI_ISP_GetEvDigitalGain(ISP_DEV IspDev, AW_U32 *EvDigitalGain);
 int AW_MPI_ISP_GetEvTotalGain(ISP_DEV IspDev, AW_U32 *EvTotalGain);
 int AW_MPI_ISP_GetAwbStatsAvg(ISP_DEV IspDev, AW_U32 *awb_stats_ravg, AW_U32 *awb_stats_gavg, AW_U32 *awb_stats_bavg);
@@ -1202,11 +1250,21 @@ AW_U32 AW_MPI_ISP_3AInfo_Ae(ISP_DEV IspDev, ISP_3A_INFO_AE *Isp_3A_Info_Ae);
 AW_S32 AW_MPI_ISP_SetLocalExposureArea(ISP_DEV IspDev, SIZE_S Res, RECT_S RoiRgn, AW_U16 ForceAeTarget, AW_U16 Enable);
 AW_S32 AW_MPI_ISP_SetRoiArea(ISP_DEV IspDev, SIZE_S ModelRes, isp_rect_roi_t *res);
 AW_U32 AW_MPI_ISP_GetYuvPortionY(SIZE_S Res, RECT_S RoiRgn, VIDEO_FRAME_INFO_S pstFrameInfo);
-AW_U32 AW_MPI_ISP_GetAwbGainIr(ISP_DEV IspDev, AW_S32 *awb_rgain_ir, AW_S32 *awb_bgain_ir);
+AW_S32 AW_MPI_ISP_GetAwbGainIr(ISP_DEV IspDev, int *RgainIr, int *BgainIr);
 AW_S32 AW_MPI_ISP_SetAeFlickerComp(ISP_DEV IspDev, HW_S16 enable);
+AW_S32 AW_MPI_ISP_SetSensorMipiSwitch(ISP_DEV IspDev, struct sensor_mipi_switch_entity *switch_entity);
+AW_S32 AW_MPI_ISP_GetSensorMipiSwitch(ISP_DEV IspDev, struct sensor_mipi_switch_entity *switch_entity);
 
 AW_S32 AW_MPI_ISP_GetIsp2VeParam(ISP_DEV IspDev, struct enc_VencIsp2VeParam *pIsp2VeParam);
 AW_S32 AW_MPI_ISP_SetVe2IspParam(ISP_DEV IspDev, struct enc_VencVe2IspParam *pVe2IspParam);
+
+ERRORTYPE AW_MPI_ISP_GetSensorInfo(ISP_DEV IspDev, struct sensor_config *cfg);
+
+AW_S32 AW_MPI_ISP_RegisterTdmBufDoneCallback(ISP_DEV IspDev, void *func);
+AW_S32 AW_MPI_ISP_ReturnTdmBuf(ISP_DEV IspDev, struct vin_isp_tdm_event_status *status);
+AW_S32 AW_MPI_ISP_GetTdmData(ISP_DEV IspDev, struct vin_isp_tdm_data *data);
+AW_S32 AW_MPI_ISP_SetLdciSource(int mode, int width, int height);
+AW_S32 AW_MPI_ISP_SetLdciFrame(ISP_DEV IspDev, ldci_frame_config_t *frame_params);
 
 #ifdef __cplusplus
 //#if __cplusplus

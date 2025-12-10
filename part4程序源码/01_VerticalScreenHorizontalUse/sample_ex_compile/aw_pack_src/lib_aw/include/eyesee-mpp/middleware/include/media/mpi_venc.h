@@ -41,6 +41,7 @@ ERRORTYPE AW_MPI_VENC_ResetChn(VENC_CHN VeChn);
 ERRORTYPE AW_MPI_VENC_StartRecvPic(VENC_CHN VeChn);
 ERRORTYPE AW_MPI_VENC_StartRecvPicEx(VENC_CHN VeChn, VENC_RECV_PIC_PARAM_S *pRecvParam);
 ERRORTYPE AW_MPI_VENC_StopRecvPic(VENC_CHN VeChn);
+ERRORTYPE AW_MPI_VENC_CreateEncoder(VENC_CHN VeChn);
 ERRORTYPE AW_MPI_VENC_DestroyEncoder(VENC_CHN VeChn);
 
 ERRORTYPE AW_MPI_VENC_Query(VENC_CHN VeChn, VENC_CHN_STAT_S *pStat);
@@ -55,6 +56,8 @@ ERRORTYPE AW_MPI_VENC_ReleaseStream(VENC_CHN VeChn, VENC_STREAM_S *pStream);
 //ERRORTYPE AW_MPI_VENC_InsertUserData(VENC_CHN VeChn, unsigned char *pData, unsigned int nLen);
 /*-1:bolck  0:nonblock   >0 : overtime   */
 ERRORTYPE AW_MPI_VENC_SendFrame(VENC_CHN VeChn, VIDEO_FRAME_INFO_S *pFrame ,int nMilliSec);
+ERRORTYPE AW_MPI_VENC_SendFrameSync(VENC_CHN VeChn, VIDEO_FRAME_INFO_S *pFrame ,int nMilliSec);
+
 //ERRORTYPE AW_MPI_VENC_GetUsedFrame(VENC_CHN VeChn, VIDEO_FRAME_INFO_S *pFrame ,int nMilliSec);
 
 //ERRORTYPE AW_MPI_VENC_SetMaxStreamCnt(VENC_CHN VeChn, unsigned int u32MaxStrmCnt);
@@ -254,6 +257,23 @@ ERRORTYPE AW_MPI_VENC_SetProcSet(VENC_CHN VeChn, VeProcSet *pVeProcSet);
 
 ERRORTYPE AW_MPI_VENC_SetWbYuv(VENC_CHN VeChn, sWbYuvParam *pParam);
 ERRORTYPE AW_MPI_VENC_GetWbYuv(VENC_CHN VeChn, VencThumbInfo *pParam);
+
+ERRORTYPE AW_MPI_VENC_SetRegionD3DParam(VENC_CHN VeChn, const VencRegionD3DParam *pRegionD3DParam);
+ERRORTYPE AW_MPI_VENC_GetRegionD3DParam(VENC_CHN VeChn, VencRegionD3DParam *pRegionD3DParam);
+ERRORTYPE AW_MPI_VENC_GetRegionD3DResult(VENC_CHN VeChn, VencRegionD3DResult *pRegionD3DResult);
+
+ERRORTYPE AW_MPI_VENC_SetChromaQPOffset(VENC_CHN VeChn, int nChromaQpOffset);
+ERRORTYPE AW_MPI_VENC_SetH264ConstraintFlag(VENC_CHN VeChn, VencH264ConstraintFlag *pConstraintFlag);
+ERRORTYPE AW_MPI_VENC_SetVe2IspD2DLimit(VENC_CHN VeChn, VencVe2IspD2DLimit *pD2DLimit);
+ERRORTYPE AW_MPI_VENC_EnableSmallSearchRange(VENC_CHN VeChn, BOOL bEnable);
+ERRORTYPE AW_MPI_VENC_SetRotVe2Isp(VENC_CHN VeChn, VencRotVe2Isp *pRotVe2Isp);
+ERRORTYPE AW_MPI_VENC_SetForceConfWin(VENC_CHN VeChn, VencForceConfWin *pConfWin);
+
+ERRORTYPE AW_MPI_VENC_GetMBSuminfo(VENC_CHN VeChn, VencMBSumInfo *pMbSumInfo);
+ERRORTYPE AW_MPI_VENC_GetInsertDataBufStatus(VENC_CHN VeChn, VENC_BUF_STATUS *pBufStatus);
+ERRORTYPE AW_MPI_VENC_SetInsertData(VENC_CHN VeChn, VencInsertData *pInsertData);
+ERRORTYPE AW_MPI_VENC_SetEncAndDecCase(VENC_CHN VeChn, BOOL bEnable);
+ERRORTYPE AW_MPI_VENC_SetLensMovingMaxQp(VENC_CHN VeChn, int nLensMovingMaxQp);
 
 #ifdef __cplusplus
 }

@@ -20,7 +20,7 @@
 extern "C" {
 #endif
 
-#define AUDIO_BITSTREAM_BUFFER_SIZE (1024*128)  //(1024*4096)
+#define AUDIO_BITSTREAM_BUFFER_SIZE (1024*128*7)  //(1024*4096), ape file one chunk size can reach 860024bytes, so at least 896KB.
 #define AUDIO_BITSTREAM_BUFFER_MAX_FRAME_NUM (512)  //(4096)
 #define AUDIO_PCM_BUFFER_SIZE (128*1024) //512*1024
 
@@ -354,8 +354,13 @@ typedef struct __BsInFor
     int64_t NowPTSTime;
 
     int g726_enc_law;
-
 }BsInFor;
+
+typedef struct AudioDecBufInfo
+{
+    int mInBufSize;
+    int mOutBufSize;
+} AudioDecBufInfo;
 
 typedef struct AudioDecoder AudioDecoder;
 struct AudioDecoder
@@ -388,7 +393,7 @@ void BsQueryQuality(AudioDecoder* pDecoder,
 
 int AudioStreamDataSize(AudioDecoder* pDecoder);
 
-int AudioStreamBufferSize(void);
+int AudioStreamBufferSize(AudioDecoder* pDecoder);
 
 int AudioStreamBufferMaxFrameNum(void);
 
@@ -412,7 +417,8 @@ void AudioDecoderSeek(AudioDecoder* pDecoder,   int64_t nSeekTime);
 
 int InitializeAudioDecoder(AudioDecoder*   pDecoder,
                            AudioStreamInfo*     pAudioStreamInfo,
-                           BsInFor*             pBsInFor);
+                           BsInFor*             pBsInFor,
+                           AudioDecBufInfo*     pAudioDecBufInfo);
 
 int ResetAudioDecoder(AudioDecoder*    pDecoder, int64_t nSeekTime);
 

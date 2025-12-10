@@ -33,6 +33,7 @@ typedef struct TEXTENCDATATYPE {
     COMP_CALLBACKTYPE *pCallbacks;
     void* pAppData;
     COMP_HANDLETYPE hSelf;
+    char mThreadName[32];
 
     COMP_PORT_PARAM_TYPE sPortParam;
     COMP_PARAM_PORTDEFINITIONTYPE sInPortDef;

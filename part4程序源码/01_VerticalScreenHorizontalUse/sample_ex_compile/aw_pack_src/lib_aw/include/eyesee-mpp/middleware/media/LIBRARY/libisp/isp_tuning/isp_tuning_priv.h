@@ -113,6 +113,11 @@ struct isp_3a_param {
 	HW_U8 ae_ConvDataIndex;
 	HW_U8 ae_blowout_pre_en;
 	HW_U8 ae_blowout_attr;
+	HW_U8 ae_reserve_0;
+	HW_U8 ae_reserve_1;
+	HW_U8 ae_reserve_2;
+	HW_U8 ae_reserve_3;
+	HW_U8 ae_reserve_4;
 	HW_U8 ae_delay_frame;
 	HW_U8 exp_delay_frame;
 	HW_U8 gain_delay_frame;
@@ -154,6 +159,10 @@ struct isp_3a_param {
 	HW_U8 af_auto_fine_en;
 	HW_U8 af_single_fine_en;
 	HW_U8 af_fine_step;
+	HW_U8 af_reserve_0;
+	HW_U8 af_reserve_1;
+	HW_U8 af_reserve_2;
+	HW_U8 af_reserve_3;
 	HW_U8 af_move_cnt;
 	HW_U8 af_still_cnt;
 	HW_U8 af_move_monitor_cnt;

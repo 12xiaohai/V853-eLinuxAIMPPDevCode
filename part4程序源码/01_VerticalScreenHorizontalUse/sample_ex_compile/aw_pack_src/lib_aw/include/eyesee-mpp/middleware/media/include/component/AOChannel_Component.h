@@ -35,9 +35,9 @@
 #include <drclog.h>
 #endif
 
-#if (MPPCFG_AGC == OPTION_AGC_ENABLE)
-#include <agc_m.h>
-#endif
+//#if (MPPCFG_AGC == OPTION_AGC_ENABLE)
+//#include <agc_m.h>
+//#endif
 
 #ifdef CFG_AUDIO_EFFECT_RESAMPLE
 #include "aumixcom.h"
@@ -73,6 +73,7 @@ typedef struct AO_CHN_DATA_S {
     COMP_CALLBACKTYPE *pCallbacks;
     void *pAppData;
     COMP_HANDLETYPE hSelf;
+    char mThreadName[32];
 
     COMP_PORT_PARAM_TYPE sPortParam;
     COMP_PARAM_PORTDEFINITIONTYPE sPortDef[AO_CHN_MAX_PORTS];
@@ -146,11 +147,22 @@ typedef struct AO_CHN_DATA_S {
 
     void* mDrc;
     AO_DRC_CONFIG_S mDrcCfg;
-    my_agc_handle mAgcCfg;
+
+    void *mpAgcHandle; //agc_handle
+    AGC_FLOAT_CONFIG_S mAgcCfg;
+    pthread_mutex_t mAgcLock;
+    short *mpAgcTmpBuff;
+    unsigned int mnAgcTmpBuffLen;
 
     BOOL mbMute;
     char *pMuteBuf;
     int nMuteBufSize;
+
+    float mfVps; //[0.5, 4]
+    char *mpVpsOutBuf;
+    int mVpsOutBufSize;
+    int mVpsOutValidLen;
+    void *mpVpsSampleConverter;   //sonicStream
 } AO_CHN_DATA_S;
 
 ERRORTYPE AOChannel_ComponentInit(PARAM_IN COMP_HANDLETYPE hComponent);

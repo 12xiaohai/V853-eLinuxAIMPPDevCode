@@ -18,7 +18,9 @@
 #ifndef _ISP_3A_AE_H_
 #define _ISP_3A_AE_H_
 
-#if (ISP_VERSION == 522)
+#include "isp_3a_afs.h"
+
+#if (ISP_VERSION >= 601)
 #define ISP_LIB_USE_FLASH	1
 #else
 #define ISP_LIB_USE_FLASH	0
@@ -28,6 +30,7 @@
 #define AE_FNO_STEP	16
 #define ISP_AE_START_FRAME_NUM	3
 #define ISP_SAVE_SETTING_NUM 5
+#define AE_FACE_MAX_NUM 8
 /*
  *  Exposure metering
  */
@@ -36,6 +39,7 @@ enum ae_metering_mode {
 	AE_METERING_MODE_CENTER = 1,
 	AE_METERING_MODE_SPOT = 2,
 	AE_METERING_MODE_MATRIX	= 3,
+	AE_METERING_MODE_FACE_SPOT = 4,
 };
 
 enum exposure_mode {
@@ -46,8 +50,11 @@ enum exposure_mode {
 };
 
 enum ae_mode {
-	AE_NORM	= 0,
-	AE_WDR	= 1,
+	AE_NORM = 0,
+	AE_WDR = 1,
+	AE_WDR_DG = 2,
+	AE_WDR_AUTO = 3,
+	AE_WDR_AUTO_DG = 4,
 };
 
 enum light_mode {
@@ -102,9 +109,36 @@ struct ev_setting {
 	HW_U32 ev_tv;
 	HW_U32 ev_sv;
 	HW_S32 ev_lv;
-	HW_U32 ev;
+	float ev;
 
 	HW_S32 ev_idx;
+};
+
+struct ae_face_cfg {
+	struct isp_h3a_coor_win face_ae_coor[AE_FACE_MAX_NUM];
+	HW_U8 enable;
+	HW_U8 vaild_face_cnt;
+	HW_S16 face_ae_tolerance;
+	HW_S16 face_ae_speed;
+	HW_S16 face_ae_target;
+	HW_S16 face_ae_delay_cnt;
+	HW_U16 face_up_percent;
+	HW_U16 face_down_percent;
+	HW_U16 ae_face_block_num_thrd;
+	HW_U16 ae_face_block_weight;
+	HW_U16 ae_over_face_max_exp_control;
+	HW_U16 ae_face_win_weight[16];
+	HW_S32 ae_face_pos_weight[64];
+};
+
+struct ae_face_size_info {
+	HW_U16 ae_face_win_x1;
+	HW_U16 ae_face_win_x2;
+	HW_U16 ae_face_win_y1;
+	HW_U16 ae_face_win_y2;
+	HW_U16 ae_face_block_num;
+	HW_U16 ae_face_win_width;
+	HW_U16 ae_face_win_height;
 };
 
 typedef struct ev_setting_save {
@@ -137,6 +171,7 @@ typedef struct isp_ae_settings {
 	HW_S32 iris_fno;
 
 	enum ae_mode ae_mode;
+	enum isp_ae_stat_mode ae_stat_mode;
 	enum flash_mode flash_mode;
 	enum exposure_mode exp_mode;
 	enum light_mode light_mode;
@@ -159,6 +194,13 @@ typedef struct isp_ae_settings {
 	bool flash_switch_flag;
 	HW_S32 take_picture_flag; /* enum v4l2_take_picture */
 	HW_S32 take_pic_start_cnt;
+	HW_S16 ae_face_appear_cnt;
+	HW_S16 ae_face_for_detect_flag;
+	HW_S16 ae_face_disappear_flag;
+	HW_S16 ae_face_delay_cnt;
+	HW_S16 ae_face_last_target;
+	HW_S16 ae_face_disappear_job_done;
+	struct ae_face_cfg face_cfg;
 } isp_ae_settings_t;
 
 typedef struct isp_ae_ini_cfg {
@@ -178,14 +220,14 @@ typedef struct isp_ae_ini_cfg {
 	HW_S32 ae_handle_high_fps_en;
 	HW_S32 ae_iso2gain_ratio;
 	HW_S32 ae_fno_step[AE_FNO_STEP];
-	HW_S16 wdr_cfg[ISP_WDR_CFG_MAX];
+	HW_U16 wdr_cfg[ISP_WDR_COMM_CFG_MAX];
 	HW_S32 ae_gain_favor;
 	HW_S32 ae_gain_range[4];
 	HW_S32 ae_total_gain_range[2];
 	HW_S32 ae_digital_gain_range[2];
 	HW_S32 ae_analog_gain_range[2];
 	struct ae_table_info ae_tbl_scene[SCENE_MODE_MAX];
-	double gain_ratio;
+	float gain_ratio;
 }ae_ini_cfg_t;
 
 typedef enum isp_ae_param_type {
@@ -193,6 +235,7 @@ typedef enum isp_ae_param_type {
 	ISP_AE_UPDATE_AE_TABLE,
 	ISP_AE_SET_EXP_IDX,
 	ISP_AE_BUILD_TOUCH_WEIGHT,
+	ISP_AE_BUILD_FACE_WEIGHT,
 
 	ISP_AE_PARAM_TYPE_MAX,
 } ae_param_type_t;
@@ -259,10 +302,10 @@ typedef struct sensor_settings {
 } sensor_setting_t;
 
 typedef struct wdr_ratio {
-	HW_S32 sensor;
+	HW_S32 last;
 	HW_S32 isp_hardware;
 	HW_S32 tmp;
-	HW_S32 last;
+	HW_S32 real;
 } wdr_ratio_t;
 
 typedef struct isp_ae_result {
@@ -294,7 +337,7 @@ typedef struct isp_ae_result {
 
 	HW_U8 backlight;
 
-	double gain_ratio;
+	float gain_ratio;
 } ae_result_t;
 
 typedef struct isp_ae_core_ops {

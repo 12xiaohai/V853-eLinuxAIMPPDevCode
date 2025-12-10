@@ -13,22 +13,25 @@
 #ifndef __VNECPARAMETERS_H__
 #define __VNECPARAMETERS_H__
 
-#include <mm_common.h>
-#include <Errors.h>
-#include <mm_comm_video.h>
-#include <mm_comm_venc.h>
-#include <type_camera.h>
-#include <vencoder.h>
-
 #include <string>
 #include <list>
 #include <map>
+
+#include <mm_common.h>
+#include <mm_comm_video.h>
+#include <mm_comm_venc.h>
+#include <media_common_vcodec.h>
+#include <vencoder.h>
+
+#include <Errors.h>
+#include <type_camera.h>
 
 namespace EyeseeLinux {
 
 class VencParameters
 {
 public:
+    /*
     enum class VideoEncodeProductMode
     {
         NORMAL_MODE = 0,
@@ -120,6 +123,7 @@ public:
             VEncAttrH265FixQp   mAttrH265FixQp;
             VEncAttrH265Abr     mAttrH265Abr;
         };
+        unsigned int GetBitRate();
     };
 
     struct VEncAttr
@@ -143,7 +147,12 @@ public:
             VEncAttrH265 mAttrH265;
         };
     };
-
+    */
+    union VUI
+    {
+        VENC_PARAM_H264_VUI_S H264Vui;
+        VENC_PARAM_H265_VUI_S H265Vui;
+    };
     VencParameters();
     ~VencParameters();
 
@@ -156,90 +165,99 @@ public:
         return mFrameRate;
     }
 
-    void setVEncAttr(VEncAttr &pVEncAttr);
-    VEncAttr getVEncAttr();
+    //void setVEncAttr(VEncAttr &pVEncAttr);
+    //VEncAttr getVEncAttr();
 
+    /*
     inline void setVideoEncoder(PAYLOAD_TYPE_E video_encoder)
     {
         mVideoEncoder = video_encoder;
     }
-
+    */
     inline PAYLOAD_TYPE_E getVideoEncoder()
     {
-        return mVideoEncoder;
+        return mVEncChnAttr.VeAttr.Type;
     }
 
-    void setVideoSize(const SIZE_S &nVideoSize);
-    void getVideoSize(SIZE_S &nVideoSize);
+    void setVideoSize(const SIZE_S &stVideoSize);
+    void getVideoSize(SIZE_S &stVideoSize);
+    void setVideoEncodingBitRate(int bitRate);
+    int getVideoEncodingBitRate();
 
+    /**
+      set I frame interal.
+      @param nMaxKeyItl
+        e.g., 30 stands for 30fps.
+    */
     inline void setVideoEncodingIFramesNumberInterVal(int nMaxKeyItl)
     {
-        mVideoMaxKeyItl = nMaxKeyItl;
+        mVEncChnAttr.VeAttr.MaxKeyInterval = nMaxKeyItl;
     }
     inline int getVideoEncodingIFramesNumberInterVal()
     {
-        return mVideoMaxKeyItl;
+        return mVEncChnAttr.VeAttr.MaxKeyInterval;
     }
 
-    status_t setIQpOffset(int nIQpOffset);
+    //status_t setIQpOffset(int nIQpOffset);
     inline int getIQpOffset()
     {
-        return mIQpOffset;
+        return GetIQpOffsetFromVENC_CHN_ATTR_S(&mVEncChnAttr);
     }
-
+    /*
     inline void enableFastEncode(bool enable)
     {
         mFastEncFlag = enable;
     }
+    */
     inline bool getFastEncodeFlag()
     {
-        return mFastEncFlag;
+        return (bool)GetFastEncFlagFromVENC_CHN_ATTR_S(&mVEncChnAttr);
     }
 
-    inline void enableVideoEncodingPIntra(bool enable)
+    /*inline void enableVideoEncodingPIntra(bool enable)
     {
         mbPIntraEnable = enable;
-    }
+    }*/
     inline bool getVideoEncodingPIntraFlag()
     {
-        return mbPIntraEnable;
+        return (bool)GetPIntraEnableFromVENC_CHN_ATTR_S(&mVEncChnAttr);
     }
 
-    inline void setOnlineEnable(bool enable)
+    /*inline void setOnlineEnable(bool enable)
     {
         mOnlineEnable = enable;
-    }
+    }*/
     inline bool getOnlineEnable()
     {
-        return mOnlineEnable;
+        return (bool)mVEncChnAttr.VeAttr.mOnlineEnable;
     }
 
-    inline void setOnlineShareBufNum(int num)
+    /*inline void setOnlineShareBufNum(int num)
     {
         mOnlineShareBufNum = num;
-    }
+    }*/
     inline int getOnlineShareBufNum()
     {
-        return mOnlineShareBufNum;
+        return mVEncChnAttr.VeAttr.mOnlineShareBufNum;
     }
 
-    void setVEncBitRateControlAttr(VEncBitRateControlAttr &RcAttr);
-    VEncBitRateControlAttr getVEncBitRateControlAttr();
+    //void setVEncBitRateControlAttr(VEncBitRateControlAttr &RcAttr);
+    //VEncBitRateControlAttr getVEncBitRateControlAttr();
 
     //void setVideoEncodingRateControlMode(const VideoEncodeRateControlMode &rcMode);
-    //VideoEncodeRateControlMode getVideoEncodingRateControlMode();
+    VENC_RC_MODE_E getVideoEncodingRateControlMode();
 
-    void setVideoEncodingProductMode(VideoEncodeProductMode &pdMode);
-    VideoEncodeProductMode getVideoEncodingProductMode();
+    //void setVideoEncodingProductMode(VideoEncodeProductMode &pdMode);
+    eVencProductMode getVideoEncodingProductMode();
 
-    inline void setSensorType(eSensorType eType)
+    /*inline void setSensorType(eSensorType eType)
     {
         mSensorType = eType;
-    }
-    inline eSensorType getSensorType()
+    }*/
+    /*inline eSensorType getSensorType()
     {
-        return mSensorType;
-    }
+        return mVEncRcParam.sensor_type;
+    }*/
 
     inline void enableNullSkip(bool enable)
     {
@@ -291,11 +309,11 @@ public:
 
     inline void enableColor2Grey(bool enable)
     {
-        mbColor2Grey = enable;
+        mColor2Grey.bColor2Grey = (BOOL)enable;
     }
     inline bool getColor2GreyFlag()
     {
-        return mbColor2Grey;
+        return (bool)mColor2Grey.bColor2Grey;
     }
 
     void setVideoEncodingSmartP(VencSmartFun &pParam);
@@ -328,34 +346,82 @@ public:
     void setRoiCfg(VENC_ROI_CFG_S &pVencRoiCfg);
     VENC_ROI_CFG_S getRoiCfg();
 
-    status_t enableIframeFilter(bool enable);
-    bool getIframeFilter();
+    inline void setVui(VENC_PARAM_H264_VUI_S &vui)
+    {
+        mVuiInfo.H264Vui = vui;
+    }
+    inline void setVui(VENC_PARAM_H265_VUI_S &vui)
+    {
+        mVuiInfo.H265Vui = vui;
+    }
+    inline VUI getVui()
+    {
+        return mVuiInfo;
+    }
+    //status_t enableIframeFilter(bool enable);
+    //bool getIframeFilter();
 
-    status_t setVideoEncodingMode(int Mode);
+    //status_t setVideoEncodingMode(int Mode);
 
-    status_t setVideoSliceHeight(int sliceHeight);
+    //status_t setVideoSliceHeight(int sliceHeight);
+
+    inline void enableIspAndVeLink(bool enable)
+    {
+        mbIspAndVeLinkEnable = enable;
+    }
+    inline bool getIspAndVeLinkEnable()
+    {
+        return mbIspAndVeLinkEnable;
+    }
+
+    inline void setMainStreamFlag(bool flag)
+    {
+        mbMainStreamFlag = flag;
+    }
+    inline bool getMainStreamFlag()
+    {
+        return mbMainStreamFlag;
+    }
+
+    inline void enableEncpp(bool enable)
+    {
+        mVEncChnAttr.EncppAttr.mbEncppEnable = (BOOL)enable;
+    }
+    inline bool getEncppEnable()
+    {
+        return (bool)mVEncChnAttr.EncppAttr.mbEncppEnable;
+    }
+
+    inline void setEncppSharpAttenCoefPer(int value)
+    {
+        mEncppSharpAttenCoefPer = value;
+    }
+    inline int getEncppSharpAttenCoefPer()
+    {
+        return mEncppSharpAttenCoefPer;
+    }
 
 private:
     int mFrameRate; //dst frame rate.
-    int mVideoWidth;
-    int mVideoHeight;
-    int mVideoMaxKeyItl;
-    int mIQpOffset;
-    int mFastEncFlag;
-    VideoEncodeProductMode mVideoPDMode;
-    eSensorType mSensorType;
-    bool mbPIntraEnable;
+    //int mVideoWidth;
+    //int mVideoHeight;
+    //int mVideoMaxKeyItl; // 30fps:30,
+    //int mIQpOffset;
+    //int mFastEncFlag;
+    //VideoEncodeProductMode mVideoPDMode;
+    //eSensorType mSensorType;
+    //bool mbPIntraEnable;
     bool mNullSkipEnable;
     bool mPSkipEnable;
     bool mbHorizonfilp;
     bool mbAdaptiveintrainp;
     s3DfilterParam mVenc3DnrParam;
-    bool mbColor2Grey;
+    VENC_COLOR2GREY_S mColor2Grey;
 
-    PAYLOAD_TYPE_E mVideoEncoder;
+    //PAYLOAD_TYPE_E mVideoEncoder;
     //VideoEncodeRateControlMode mVideoRCMode;
-    VEncAttr mVEncAttr;
-    VEncBitRateControlAttr mVEncRcAttr;
+    //VEncAttr mVEncAttr;
+    //VEncBitRateControlAttr mVEncRcAttr;
     VENC_CHN_ATTR_S mVEncChnAttr;
     VENC_RC_PARAM_S mVEncRcParam;
     VENC_PARAM_INTRA_REFRESH_S mIntraRefreshParam;
@@ -363,13 +429,19 @@ private:
     VENC_ROI_CFG_S mVEncRoiCfg;
     VENC_SUPERFRAME_CFG_S mVEncSuperFrameCfg;
     VencSmartFun mSmartPParam;
+    VUI mVuiInfo;
     VencSaveBSFile mSaveBSFileParam;
     VeProcSet mVeProcSet;
 
     VENC_CHN mVeChn;
 
-    bool mOnlineEnable;    /* 1: online, 0: offline.*/
-    int mOnlineShareBufNum; /* only for online. Number of share buffers of CSI and VE, support 0/1/2.*/
+    //bool mOnlineEnable;    /* 1: online, 0: offline.*/
+    //int mOnlineShareBufNum; /* only for online. Number of share buffers of CSI and VE, support 0/1/2.*/
+
+    //bool mbEncppEnable;
+    int mEncppSharpAttenCoefPer; ///< user set Encpp sharp attenuation percentage coefficient.
+    bool mbIspAndVeLinkEnable; ///< user set if enable isp2ve linkage
+    bool mbMainStreamFlag; ///< user set if this venc stream is mainStream
 };
 
 };

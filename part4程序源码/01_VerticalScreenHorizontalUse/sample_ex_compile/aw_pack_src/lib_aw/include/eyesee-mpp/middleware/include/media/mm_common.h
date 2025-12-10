@@ -118,7 +118,7 @@ typedef int SENSOR_ID;
 typedef int FD_HANDLE;
 typedef int MD_CHN;
 typedef int DEMUX_CHN;
-typedef int MUX_GRP;
+//typedef int MUX_GRP;
 typedef int MUX_CHN;
 typedef int CLOCK_CHN;
 typedef char* UVC_DEV;
@@ -207,7 +207,7 @@ typedef enum MOD_ID_E {
 typedef struct MPP_CHN_S {
     MOD_ID_E mModId;
     int mDevId;  //VO set VoLayer to it. ISE set grpId to it.
-    int mChnId;  //muxer group set grpId to it;
+    int mChnId;
 } MPP_CHN_S;
 
 typedef enum PROFILE_TYPE_E {
@@ -355,6 +355,10 @@ typedef enum {
     PT_TEXT = 1004,
     //add by aw
     PT_G726U = 2000,
+    PT_APE = 2001,
+    PT_FLAC = 2002,
+    PT_OGG = 2003,
+    PT_OPUS = 2004,
     PT_BUTT
 } PAYLOAD_TYPE_E;
 
@@ -364,6 +368,7 @@ typedef enum {
     MEDIA_FILE_FORMAT_TS,
     MEDIA_FILE_FORMAT_MP3,
     MEDIA_FILE_FORMAT_AAC,
+    MEDIA_FILE_FORMAT_WAV,
     MEDIA_FILE_FORMAT_RAW,
     MEDIA_FILE_FORMAT_UNKNOWN,
 } MEDIA_FILE_FORMAT_E;
@@ -378,15 +383,20 @@ typedef enum MPP_EVENT_TYPE {
     MPP_EVENT_VENC_QPMAP_UPDATE_MB_STAT_INFO, // for VENC QPMAP
     MPP_EVENT_LINKAGE_VE2ISP_PARAM,
     MPP_EVENT_LINKAGE_ISP2VE_PARAM,
+    MPP_EVENT_DROP_FRAME, // NULL, drop frame.
     MPP_EVENT_RELEASE_ISE_VIDEO_BUFFER0,  //VIDEO_FRAME_INFO_S for recorder/VIChannel::DoVdaThread, ISE, VO, VENC
     MPP_EVENT_RELEASE_ISE_VIDEO_BUFFER1,  //VIDEO_FRAME_INFO_S for recorder/VIChannel::DoVdaThread, ISE, VO, VENC
-    MPP_EVENT_RELEASE_AUDIO_BUFFER,  //AUDIO_FRAME_S
+    MPP_EVENT_RELEASE_AUDIO_BUFFER,  //AUDIO_FRAME_S, used by mpi_ao.
     MPP_EVENT_BSFRAME_AVAILABLE,     //CDXRecorderBsInfo
     MPP_EVENT_ERROR_ENCBUFFER_OVERFLOW,
     MPP_EVENT_NEED_NEXT_FD,  // int muxerId
     MPP_EVENT_RECORD_DONE,   // int muxerId
     MPP_EVENT_WRITE_DISK_ERROR, // int muxerId
     MPP_EVENT_CAPTURE_AUDIO_DATA, // unsigned int size;
+    MPP_EVENT_RELEASE_VENC_STREAM, ///< for mpi_mux non-tunnel mode. MUX_VENC_STREAM_S*
+    MPP_EVENT_RELEASE_AENC_STREAM, ///< for mpi_mux non-tunnel mode. MUX_AENC_STREAM_S*
+    MPP_EVENT_RELEASE_TENC_STREAM, ///< for mpi_mux non-tunnel mode. MUX_TENC_STREAM_S*
+    MPP_EVENT_MUX_FORCE_I_FRAME, ///< mpi_mux force mpi_venc to output I frame. int nStreamId == vencId.
 
     MPP_EVENT_NOTIFY_EOF = 0x100,
     MPP_EVENT_SET_VIDEO_SIZE,  //SIZE_S

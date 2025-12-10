@@ -33,7 +33,9 @@
 
 extern unsigned int isp_dev_log_param;
 
-#if (ISP_VERSION >= 600)
+#if (ISP_VERSION == 603)
+#define HW_ISP_DEVICE_NUM	2
+#else
 #define HW_ISP_DEVICE_NUM	4
 #endif
 
@@ -49,6 +51,7 @@ struct hw_isp_device {
 	struct media_entity sensor;
 	struct media_entity subdev;
 	struct media_entity stat;
+	struct media_entity tdm_rx;
 	const struct isp_dev_operations *ops;
 
 	int load_type;
@@ -59,6 +62,8 @@ struct hw_isp_device {
 	void *priv;
 	void *ctx;
 	void *tuning;
+
+	void (*isp_tdm_buffer_process)(struct vin_isp_tdm_event_status *status);
 };
 
 struct hw_isp_media_dev {
@@ -110,6 +115,10 @@ void isp_dev_banding_tuning(struct hw_isp_device *isp, void *tuning);
 void *isp_dev_get_tuning(struct hw_isp_device *isp);
 char *isp_dev_get_sensor_name(struct hw_isp_device *isp);
 
+int isp_dev_tdm_return_buffer(struct hw_isp_device *isp, struct vin_isp_tdm_event_status *status);
+int isp_set_tmd_addr_map(struct hw_isp_device *isp, struct isp_tdm_map_cfg *map);
+int isp_requset_tdm_data(struct hw_isp_device *isp, struct vin_isp_tdm_data *data);
+
 /* Processing parameters */
 int isp_set_load_reg(struct hw_isp_device *isp, struct isp_table_reg_map *reg);
 
@@ -120,10 +129,16 @@ int isp_sensor_get_configs(struct hw_isp_device *isp, struct sensor_config *cfg)
 int isp_sensor_set_exp_gain(struct hw_isp_device *isp, struct sensor_exp_gain *exp_gain);
 int isp_sensor_set_fps(struct hw_isp_device *isp, struct sensor_fps *fps);
 int isp_sensor_get_temp(struct hw_isp_device *isp, struct sensor_temp *temp);
+int isp_sensor_get_flip(struct hw_isp_device *isp, struct sensor_flip *flip);
+int isp_sensor_mipi_switch(struct hw_isp_device *isp, struct sensor_mipi_switch_entity *sensor_mipi_switch_info);
 
 int isp_act_init_range(struct hw_isp_device *isp, unsigned int min, unsigned int max);
 int isp_act_set_pos(struct hw_isp_device *isp, unsigned int pos);
 int isp_flash_ctrl(struct hw_isp_device *isp, unsigned int mode);
+
+void isp_get_debug_info(struct hw_isp_device *isp);
+int isp_sync_debug_info(struct hw_isp_device *isp, struct isp_debug_info *debug_info);
+int isp_sensor_get_fps(struct hw_isp_device *isp, struct sensor_fps *fps);
 
 #endif /*_HWISP_H_*/
 

@@ -33,6 +33,7 @@ extern "C" {
 #define MAX_VIPP_DEV_NUM 	16
 #define MAX_VIDEO_NUM 		MAX_VIPP_DEV_NUM
 #define MAX_VIR_CHN_NUM 	4
+#define MAX_ISP_DEV_NUM 	4
 
 /** This macro specifies a valid VIPP device ID, for online only. */
 #define HVIDEO(group, index) (group*4 + index)
@@ -435,7 +436,7 @@ typedef struct awVI_ATTR_S {
     unsigned int nplanes;
     unsigned int fps;
     unsigned int capturemode;   //V4L2_MODE_VIDEO
-    unsigned int use_current_win;   //0:config ISP param again; 1:use current ISP param
+    unsigned int use_current_win;   //0:config ISP param again; 1:use current ISP param, maybe deprecated.
     unsigned int wdr_mode;
     unsigned int drop_frame_num; // drop frames number after enable vipp device(default 0).
     unsigned char mOnlineEnable;    /* 1: online, 0: offline.*/
@@ -443,12 +444,16 @@ typedef struct awVI_ATTR_S {
     enum mipi_pix_num pixel_num; /* mipi pix num(default 0).*/
     unsigned char tdm_speed_down_en; /* 1:tdm speed down, 0:tdm normal speed(default 0).*/
     VI_CROP_CFG_S mCropCfg; /* config vipp crop params.*/
-    BOOL mbEncppEnable; /*enable Encpp, FALSE:disable, TRUE:enable, default value:FALSE. if mpp venc enable Encpp, set TRUE.*/
+    BOOL mbEncppEnable; /*enable Encpp sharp, FALSE:disable, TRUE:enable, default value:FALSE. if mpp venc enable Encpp sharp, set TRUE.*/
+    BOOL mbWidthStrideDisable; /* disable width stride(default 0, means enable).*/
+    unsigned int tdm_rxbuf_cnt;
+    unsigned char large_dma_merge_en;
+    BOOL mbDataFromYuvSensorEnable; /* specify whether the current vi device data is sourced from the yuv sensor, FALSE:disable, TRUE:enable, default: FALSE */
 } VI_ATTR_S;
 
 typedef struct {
     BOOL mbRecvInIdleState; //receive input frames in idle, executing, pause state.
-    int mCacheFrameNum; //max frame number cached in virChn. 0: not cache, >0:cache number.
+    int mCacheFrameNum; //max frame number cached in virChn. 0: cache all, >0:cache number.
     int mCachePolicy; //0:keep the old frames and discard current frame(default), 1:keep the latest frames and discard the old frames.
 } ViVirChnAttrS;
 

@@ -19,7 +19,7 @@
 #define _TOOLS_H_
 
 #define square(x) ((x) * (x))
-#define clear(x) memset(&(x), 0, sizeof(x))
+//#define clear(x) memset(&(x), 0, sizeof(x))
 
 #define array_size(array) (sizeof(array) / sizeof((array)[0]))
 
@@ -69,8 +69,8 @@
         __val > __max ? __max : __val;         \
     })
 
-#define div_round_up(num, denom) (((num) + (denom)-1) / (denom))
-#define div_round(num, denom) (((num) + ((denom) / 2)) / (denom))
+//#define div_round_up(num, denom) (((num) + (denom)-1) / (denom))
+//#define div_round(num, denom) (((num) + ((denom) / 2)) / (denom))
 /*
 #define container_of(ptr, type, member) \
 	(type *)((char *)(ptr) - offsetof(type, member))

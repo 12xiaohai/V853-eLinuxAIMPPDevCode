@@ -22,6 +22,8 @@
 #include <linux/types.h>
 #include <linux/videodev2.h>
 #include <stdbool.h>
+#include "../isp_comm.h"
+#include "../isp_3a_ae.h"
 
 enum isp_wdr_mode {
 	ISP_NORMAL_MODE = 0,
@@ -29,13 +31,9 @@ enum isp_wdr_mode {
 	ISP_2FCMD_WDR_MODE,/*LM--L+M*/
 	ISP_SEHDR_MODE,
 	ISP_3FDOL_WDR_MODE,/*L+M+S*/
-	ISP_3FDOL_LM_WDR_MODE,/*LM+M+S*/
-	ISP_3FDOL_MS_WDR_MODE,/*L+M+MS*/
 	ISP_3FCMD_WDR_MODE,/*LMS--L+M+S*/
-	ISP_3FCMD_LM_WDR_MODE,/*LMS--LM+M+S*/
-	ISP_3FCMD_MS_WDR_MODE,/*LMS--L+M+MS*/
-	ISP_2FCMD1FDOL_WDR_MODE,/*LM+S--LM+M+S*/
-	ISP_1FDOL2FCMD_WDR_MODE,/*L+MS--L+M+MS*/
+	ISP_2FCMD1FDOL_WDR_MODE,/*LM+S--L+M+S*/
+	ISP_1FDOL2FCMD_WDR_MODE,/*L+MS--L+M+S*/
 };
 
 /*  Flags for 'capability' and 'capturemode' fields */
@@ -334,6 +332,87 @@ struct tdm_speeddn_cfg {
 	unsigned char tdm_tx_invalid_num;
 };
 
+struct isp_ir_awb_gain {
+	int awb_rgain_ir;
+	int awb_bgain_ir;
+};
+
+struct isp_ae_roi_attr {
+	unsigned short enable;
+	unsigned short force_ae_target;
+	struct isp_h3a_coor_win coor;
+};
+
+struct isp_encpp_cfg_attr_data {
+	signed char encpp_en;
+	struct encpp_static_sharp_config encpp_static_sharp_cfg;
+	struct encpp_dynamic_sharp_config encpp_dynamic_sharp_cfg;
+	struct encoder_3dnr_config encoder_3dnr_cfg;
+	struct encoder_2dnr_config encoder_2dnr_cfg;
+};
+
+typedef enum _switch_choice_type {
+	SWITCH_A = 0,
+	SWITCH_B = 1,
+	SWITCH_MAX,
+} switch_choice_type;
+
+typedef enum _switch_ctrl_type {
+	GET_SWITCH = 0,
+	SET_SWITCH = 1,
+	CTRL_MAX,
+} switch_ctrl_type;
+
+struct sensor_mipi_switch_entity {
+	switch_ctrl_type switch_ctrl;
+	unsigned int mipi_switch_status;
+	unsigned int comp_ratio;
+	unsigned int exp_comp;
+	unsigned int gain_comp;
+	unsigned int drop_frame_num;
+	unsigned long long time_stamp;
+};
+
+struct isp_cfg_attr_data {
+	unsigned short cfg_id;
+	unsigned short update_flag;
+	int ev_digital_gain;
+	int pltmwdr_level;
+	int denoise_level;
+	int tdf_level;
+	int ir_status;
+	int ae_ev_idx;
+	int ae_max_ev_idx;
+	int ae_lum_idx;
+	int ae_ev_lv;
+	int ae_ev_lv_adj;
+	int ae_lock;
+	int awb_color_temp;
+	int ae_weight_lum;
+	struct isp_ir_awb_gain awb_ir_gain;
+	struct ae_table_info *ae_table;
+	char path[100];
+	struct isp_ae_roi_attr ae_roi_area;
+	unsigned char ae_stat_avg[432];
+	struct enc_VencVe2IspParam VencVe2IspParam;
+	unsigned char ai_isp_en;
+	unsigned char ai_isp_update;
+	struct ae_face_cfg ae_face_info;
+	struct sensor_mipi_switch_entity mipi_switch_info;
+};
+
+struct isp_memremap_cfg {
+	unsigned char en;
+	void *vir_addr;
+	unsigned int size;
+};
+
+struct bk_buffer_align {
+    unsigned char lbc_align_en;
+    unsigned char yuv_align_en;
+};
+
+
 #define VIDIOC_ISP_AE_STAT_REQ \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 1, struct isp_stat_buf)
 #define VIDIOC_ISP_HIST_STAT_REQ \
@@ -356,13 +435,42 @@ struct tdm_speeddn_cfg {
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 10, struct isp_debug_mode)
 #define VIDIOC_VIN_PTN_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 11, struct vin_pattern_config)
+#define VIDIOC_VIN_RESET_TIME \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 12, struct vin_reset_time)
+#define VIDIOC_SET_PARSER_FPS \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 13, struct parser_fps_ds)
+#define VIDIOC_SET_STANDBY \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct sensor_standby_status)
 #define VIDIOC_SET_SENSOR_ISP_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct sensor_isp_cfg)
 #define VIDIOC_SET_VE_ONLINE \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 16, struct csi_ve_online_cfg)
+#define VIDIOC_SET_VIPP_SHRINK \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 17, struct vipp_shrink_cfg)
 #define VIDIOC_SET_TDM_SPEEDDN_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 18, struct tdm_speeddn_cfg)
-
+#define VIDIOC_SET_ISP_CFG_ATTR \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 19, struct isp_cfg_attr_data)
+#define VIDIOC_GET_ISP_CFG_ATTR \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 20, struct isp_cfg_attr_data)
+#define VIDIOC_SET_TDM_DEPTH \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 21, unsigned int)
+#define VIDIOC_GET_ISP_ENCPP_CFG_ATTR \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 22, struct isp_encpp_cfg_attr_data)
+#define VIDIOC_SET_PHY2VIR \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 23, struct isp_memremap_cfg)
+#define VIDIOC_SET_D3DLBCRATIO \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 24, unsigned int)
+#define VIDIOC_SET_BKBUFFER_ALIGN \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 25, struct bk_buffer_align)
+#define VIDIOC_SET_BK_SET_WSTRIDE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 26, unsigned char)
+#define VIDIOC_SET_TDM_DROP_FRAME \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 27, unsigned int)
+#define VIDIOC_SET_TDM_RXBUF_CNT \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 28, unsigned int)
+#define VIDIOC_SET_TDM_NPU_MODE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 29, unsigned char)
 /*
  * Events
  *
@@ -374,6 +482,7 @@ struct tdm_speeddn_cfg {
 #define V4L2_EVENT_VIN_H3A		(V4L2_EVENT_VIN_CLASS | 0x1)
 #define V4L2_EVENT_VIN_HDR		(V4L2_EVENT_VIN_CLASS | 0x2)
 #define V4L2_EVENT_VIN_ISP_OFF		(V4L2_EVENT_VIN_CLASS | 0x3)
+#define V4L2_EVENT_VIN_TDM		(V4L2_EVENT_VIN_CLASS | 0x4)
 
 struct vin_isp_h3a_config {
 	__u32 buf_size;
@@ -401,6 +510,15 @@ struct vin_isp_stat_event_status {
 	__u8 buf_err;
 };
 
+struct vin_isp_tdm_event_status {
+	__u8 dev_id;
+	void *iommu_buf;
+	__u32 buf_size;
+	__u8 buf_id;
+	__u32 head_len;
+	__u32 fill_len;
+};
+
 struct vin_isp_hdr_event_data {
 	__u32			cmd;
 	struct isp_hdr_ctrl	hdr;
@@ -425,8 +543,37 @@ struct vin_vsync_event_data {
 #define VIDIOC_VIN_ISP_STAT_EN \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 33, unsigned int)
 
+struct isp_tdm_map_cfg {
+	unsigned char en;
+	void *vir_addr;
+	unsigned int size;
+	unsigned char mmap_buf_id;
+};
+
+struct vin_isp_tdm_data {
+	void *buf;
+	__u32 buf_size;
+	__u8 req_buf_id;
+};
+
+#define VIDIOC_VIN_TDM_MAP \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 40, struct isp_tdm_map_cfg)
+#define VIDIOC_VIN_TDM_DQBUF \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 41, struct vin_isp_tdm_event_status)
+#define VIDIOC_VIN_TDM_REQ_DATA \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 42, struct vin_isp_tdm_data)
+
 #define ISP_MSC_TBL_SIZE	484
 #define ISP_MSC_TBL_LENGTH			(3*ISP_MSC_TBL_SIZE)
+
+/*
+* large image dma merge mode
+*
+* VIDIOC_SET_DMA_MERGE :set large image mode
+*
+*/
+#define VIDIOC_SET_DMA_MERGE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 50, unsigned char)
 
 struct sensor_config {
 	int width;
@@ -440,6 +587,10 @@ struct sensor_config {
 	unsigned int bin_factor;/*binning factor                    */
 	unsigned int intg_min;	/*integration min, unit: line, Q4   */
 	unsigned int intg_max;	/*integration max, unit: line, Q4   */
+	unsigned int intg_mid_min;	/*middle integration min, unit: line, Q4   */
+	unsigned int intg_mid_max;	/*middle integration max, unit: line, Q4   */
+	unsigned int intg_short_min;	/*short integration min, unit: line, Q4   */
+	unsigned int intg_short_max;	/*short integration max, unit: line, Q4   */
 	unsigned int gain_min;	/*sensor gain min, Q4               */
 	unsigned int gain_max;	/*sensor gain max, Q4               */
 	unsigned int mbus_code;	/*media bus code                    */
@@ -453,7 +604,11 @@ struct sensor_config {
 
 struct sensor_exp_gain {
 	int exp_val;
+	int exp_mid_val;
+	int exp_short_val;
 	int gain_val;
+	int gain_mid_val;
+	int gain_short_val;
 	int r_gain;
 	int b_gain;
 };
@@ -461,6 +616,12 @@ struct sensor_exp_gain {
 struct sensor_fps {
 	int fps;
 };
+
+struct sensor_flip {
+	unsigned char hflip;
+	unsigned char vflip;
+};
+
 struct sensor_temp {
 	int temp;
 };
@@ -536,9 +697,22 @@ struct flash_para {
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 73, int)
 
 #define VIDIOC_VIN_GET_SENSOR_OTP_INFO \
-        _IOWR('V', BASE_VIDIOC_PRIVATE + 74, unsigned long long)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 74, unsigned long long)
+
+#define VIDIOC_VIN_SET_SENSOR_OTP_INFO \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 75, unsigned long long)
+
 #define VIDIOC_VIN_ISP_SYNC_DEBUG_INFO \
-		_IOWR('V', BASE_VIDIOC_PRIVATE + 76, struct isp_debug_info)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 76, struct isp_debug_info)
+
+#define VIDIOC_VIN_SENSOR_GET_FPS \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 77, struct sensor_fps)
+
+#define VIDIOC_VIN_SENSOR_GET_FLIP \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 78, struct sensor_flip)
+
+#define VIDIOC_VIN_SENSOR_MIPI_SWITCH \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 79, struct sensor_mipi_switch_entity)
 
 #endif /*_SUNXI_CAMERA_H_*/
 

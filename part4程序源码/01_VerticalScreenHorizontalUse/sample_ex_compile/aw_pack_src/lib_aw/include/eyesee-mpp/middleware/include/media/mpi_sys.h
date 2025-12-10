@@ -91,7 +91,7 @@ ERRORTYPE AW_MPI_SYS_GetVirMemInfo(const void* pVitAddr, SYS_VIRMEM_INFO_S* pstM
 
 ERRORTYPE AW_MPI_SYS_HANDLE_ZERO(handle_set *pHandleSet);
 ERRORTYPE AW_MPI_SYS_HANDLE_SET(int handle, handle_set *pHandleSet);
-ERRORTYPE AW_MPI_SYS_HANDLE_ISSET(int handle, handle_set *pHandleSet);
+int AW_MPI_SYS_HANDLE_ISSET(int handle, handle_set *pHandleSet);
 int AW_MPI_SYS_HANDLE_Select(int nHandles, handle_set *pRdFds, int nMilliSecs);
 
 #ifdef __cplusplus

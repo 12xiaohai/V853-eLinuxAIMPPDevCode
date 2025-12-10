@@ -49,17 +49,17 @@ typedef enum VENC_RC_MODE_E
 
 }VENC_RC_MODE_E;
 
-typedef enum VENC_PRODUCT_MODE_E
-{
-    VENC_PRODUCT_NORMAL_MODE = 0,
-    VENC_PRODUCT_IPC_MODE = 1,
-}VENC_PRODUCT_MODE_E;
+//typedef enum VENC_PRODUCT_MODE_E
+//{
+//    VENC_PRODUCT_NORMAL_MODE = 0,
+//    VENC_PRODUCT_IPC_MODE = 1,
+//}VENC_PRODUCT_MODE_E;
 
 typedef struct VENC_ATTR_H264_FIXQP_S
 {
     unsigned int      mGop;                                 /*the interval of ISLICE. */
     unsigned int      mSrcFrmRate;                          /* the input frame rate of the venc chnnel */
-    unsigned int     fr32DstFrmRate ;                        /* the target frame rate of the venc chnnel */     
+    unsigned int      mDstFrmRate;                          /* the target frame rate of the venc chnnel */     
     unsigned int      mIQp;                                 /* qp of the i frame */
     unsigned int      mPQp;                                 /* qp of the p frame */
 } VENC_ATTR_H264_FIXQP_S;
@@ -69,7 +69,7 @@ typedef struct VENC_ATTR_H264_CBR_S
     unsigned int      mGop;                                 /*the interval of ISLICE. */
     unsigned int      mStatTime;                            /* the rate statistic time, the unit is senconds(s) */
     unsigned int      mSrcFrmRate;                          /* the input frame rate of the venc chnnel */
-    unsigned int      fr32DstFrmRate ;                        /* the target frame rate of the venc chnnel */ 
+    unsigned int      mDstFrmRate;                          /* the target frame rate of the venc chnnel */ 
     unsigned int      mBitRate;                             /* average bitrate */
     unsigned int      mFluctuateLevel;                      /* level [0..5].scope of bitrate fluctuate. 1-5: 10%-50%. 0: SDK optimized, recommended; */
 } VENC_ATTR_H264_CBR_S;                                         
@@ -79,7 +79,7 @@ typedef struct VENC_ATTR_H264_VBR_S
     unsigned int      mGop;                                 /*the interval of ISLICE. */
     unsigned int      mStatTime;                            /* the rate statistic time, the unit is senconds(s) */
     unsigned int      mSrcFrmRate;                          /* the input frame rate of the venc chnnel */
-    unsigned int     fr32DstFrmRate ;                        /* the target frame rate of the venc chnnel */     
+    unsigned int      mDstFrmRate;                          /* the target frame rate of the venc chnnel */     
     unsigned int      mMaxBitRate;                          /* the max bitrate */                      
 }VENC_ATTR_H264_VBR_S;
 
@@ -107,7 +107,7 @@ typedef struct VENC_ATTR_H264_QPMAP_S
 {
     unsigned int      mGop;                                 /* */
     unsigned int      mSrcFrmRate;                          /*  */
-    unsigned int      fr32DstFrmRate ;                      /*  */
+    unsigned int      mDstFrmRate;                          /*  */
     unsigned int      mMaxBitRate;                          /* the max bitrate */
 } VENC_ATTR_H264_QPMAP_S;
 
@@ -154,7 +154,7 @@ typedef struct VENC_ATTR_MPEG4_VBR_S
 typedef struct VENC_ATTR_MJPEG_FIXQP_S
 {
     unsigned int      mSrcFrmRate;                          /* the input frame rate of the venc chnnel */
-    unsigned int     fr32DstFrmRate;                         /* the target frame rate of the venc chnnel */
+    unsigned int      mDstFrmRate;                          /* the target frame rate of the venc chnnel */
     unsigned int      mQfactor;                             /* image quality :[1,99]*/
 }VENC_ATTR_MJPEG_FIXQP_S;
 
@@ -162,9 +162,10 @@ typedef struct VENC_ATTR_MJPEG_CBR_S
 {
     unsigned int      mStatTime;                            /* the rate statistic time, the unit is senconds(s) */
     unsigned int      mSrcFrmRate;                          /* the input frame rate of the venc chnnel */
-    unsigned int     fr32DstFrmRate ;                        /* the target frame rate of the venc chnnel */
+    unsigned int      mDstFrmRate;                          /* the target frame rate of the venc chnnel */
     unsigned int      mBitRate;                             /* average bitrate */
     unsigned int      mFluctuateLevel;                      /* level [0..5].scope of bitrate fluctuate. 1-5: 10%-50%. 0: SDK optimized, recommended; */
+    VencBitRateRange  mBitRateRange;
 } VENC_ATTR_MJPEG_CBR_S;
 
 typedef struct VENC_ATTR_MJPEG_VBR_S
@@ -202,7 +203,8 @@ typedef struct VENC_RC_ATTR_S
         VENC_ATTR_H265_FIXQP_S  mAttrH265FixQp;
         VENC_ATTR_H265_ABR_S    mAttrH265Abr;
         VENC_ATTR_H265_QPMAP_S  mAttrH265QpMap;
-    };   
+    };
+    eVencProductMode mProductMode;
     void*       pRcAttr ;                            /*the rc attribute which could be specified by user*/
 }VENC_RC_ATTR_S;
 
@@ -316,7 +318,7 @@ typedef struct VENC_RC_PARAM_S
     unsigned int ThrdI[RC_TEXTURE_THR_SIZE];                     /* just useful for h264/h265 and mpeg4 for now */
     unsigned int ThrdP[RC_TEXTURE_THR_SIZE];
     unsigned int RowQpDelta;
-    union   //judge by VENC_CHN_ATTR_S->mVeAttr->mType
+    union   //judge by VENC_CHN_ATTR_S->mVeAttr->mType, VENC_CHN_ATTR_S->RcAttr->mRcMode
     {
         VENC_PARAM_H264_CBR_S     ParamH264Cbr;
         VENC_PARAM_H264_VBR_S     ParamH264Vbr;
@@ -331,10 +333,16 @@ typedef struct VENC_RC_PARAM_S
     };
 
     void* pRcParam;                      /*RC parameter which could be specified by usrer*/
-    unsigned int product_mode;      // VENC_PRODUCT_MODE_E. 0:normal mode:cdr/sdv;1:ipc; internal parameter used to affect encoding quality.
-    unsigned int sensor_type;       // eSensorType, VENC_ST_SP2305,VENC_ST_DIS_WDR
+    //VENC_PRODUCT_MODE_E product_mode;      // VENC_PRODUCT_MODE_E. 0:normal mode:cdr/sdv;1:ipc; internal parameter used to affect encoding quality.
+    //eSensorType sensor_type;       // eSensorType, VENC_ST_SP2305,VENC_ST_DIS_WDR
     VencTargetBitsClipParam mBitsClipParam;
     VencAeDiffParam mAeDiffParam;
+    int EnIFrmMbRcMoveStatusEnable; // The default is 0(false). when it is 1(true), the EnIFrmMbRcMoveStatus takes effect.
+    int EnIFrmMbRcMoveStatus;  // The motion state level threshold of I frame line rate control. range[0,4], 0:STATIC, 1:LITTLE_MOVE, 2:MIDDLE_MOVE, 3:LARGE_MOVE, 4:CAMERA_MOVE.
+    int mBitsRatioEnable; // The default is 0(false). when it is 1(true), the mBitsRatio takes effect.
+    VencIPTargetBitsRatio mBitsRatio; // VBR pre allocation bit weight, only for H.264/H.265 VBR mode.
+    int mWeakTextureThEnable; // The default is 0(false). when it is 1(true), the mWeakTextureTh takes effect.
+    float mWeakTextureTh; // Used to protect the weak texture of the picture. The smaller the value, the better the weak texture, and the easier the bit rate is to exceed. the range is [0,100].
 }VENC_RC_PARAM_S;
 
 

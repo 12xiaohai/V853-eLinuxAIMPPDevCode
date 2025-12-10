@@ -25,9 +25,7 @@
 #define FOCUS_MIN	0
 #define FOCUS_MAX	1024
 
-#if (ISP_VERSION >= 600)
-#define ISP_LIB_USE_AF		0
-#endif
+#define ISP_LIB_USE_AF		1
 
 typedef struct isp_af_ini_cfg {
 	HW_S32 af_use_otp;
@@ -57,6 +55,7 @@ typedef struct isp_af_ini_cfg {
 	HW_S32 af_tolerance_tbl_len;
 	HW_S32 af_std_code_tbl[20];
 	HW_S32 af_tolerance_value_tbl[20];
+	HW_U8 af_delay_frame;
 } af_ini_cfg_t;
 
 enum auto_focus_run_mode {
@@ -104,7 +103,7 @@ typedef struct isp_af_test_config {
 typedef enum isp_af_param_type {
 	ISP_AF_INI_DATA,
 	ISP_AF_TRIGGER,
-
+	ISP_AF_PRINT_INFO,
 	ISP_AF_PARAM_TYPE_MAX,
 } af_param_type_t;
 
@@ -135,6 +134,7 @@ typedef struct isp_af_stats {
 	struct isp_af_stats_s *af_stats;
 } af_stats_t;
 
+#define AF_PRINT_LENGTH 8192
 typedef struct isp_af_result {
 	enum auto_focus_status af_status_output;
 	HW_U32 last_code_output;
@@ -142,6 +142,7 @@ typedef struct isp_af_result {
 	HW_U32 std_code_output;
 	HW_U16 af_sap_lim_output;
 	HW_U32 af_sharp_output;
+	char af_printf_out[AF_PRINT_LENGTH];
 } af_result_t;
 
 typedef struct isp_af_core_ops {

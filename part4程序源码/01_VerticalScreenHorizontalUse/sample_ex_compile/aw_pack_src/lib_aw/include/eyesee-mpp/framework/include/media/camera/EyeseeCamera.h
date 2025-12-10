@@ -853,7 +853,7 @@ private:
      * This function is called in appropriate member function.
      */
     static status_t initCamerasConfiguration();
-    static std::map<int, CameraInfo> mCameraInfos;
+    static std::map<int, CameraInfo> mCameraInfos; //cameraId - CameraInfo
     static Mutex mCameraInfosLock;
 }; /* class EyeseeCamera */
 

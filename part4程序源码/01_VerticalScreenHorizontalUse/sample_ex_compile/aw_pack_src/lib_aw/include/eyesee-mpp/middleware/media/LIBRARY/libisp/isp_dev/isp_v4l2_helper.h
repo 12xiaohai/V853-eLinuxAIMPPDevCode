@@ -19,6 +19,7 @@
 #define _ISP_V4L2_HELPER_H_
 
 #include <linux/v4l2-subdev.h>
+#include <sys/types.h>
 
 struct media_entity;
 

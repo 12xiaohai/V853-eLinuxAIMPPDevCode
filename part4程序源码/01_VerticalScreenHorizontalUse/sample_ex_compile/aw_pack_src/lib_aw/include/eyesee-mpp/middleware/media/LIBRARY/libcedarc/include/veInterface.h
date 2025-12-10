@@ -37,6 +37,7 @@ typedef enum eVeLbcMode
     LBC_MODE_2_0X     = 2,
     LBC_MODE_2_5X     = 3,
     LBC_MODE_NO_LOSSY = 4,
+    LBC_MODE_1_0X     = 5,
 }eVeLbcMode;
 
 typedef enum VE_REGISTER_GROUP
@@ -182,6 +183,8 @@ typedef struct VeOpsS
     int  (*allocPageBuf)(void*, page_buf_info *);
     int  (*recPageBuf)(void*, page_buf_info *);
     int  (*freePageBuf)(void*, page_buf_info *);
+
+    void (*setOnlineChannel)(void*, unsigned int);
 }VeOpsS;
 
 static inline void* CdcVeInit(VeOpsS *veops, VeConfig* pVeConfig)
@@ -348,6 +351,11 @@ static inline unsigned int CdcVeRecPageBuf(VeOpsS *veops, void *p, page_buf_info
 static inline unsigned int CdcVeFreePageBuf(VeOpsS *veops, void *p, page_buf_info *page_buf)
 {
     return veops->freePageBuf(p, page_buf);
+}
+
+static inline void CdcVeSetOnlineChannel(VeOpsS *veops, void *p, unsigned int bIsOnlineChannel)
+{
+    return veops->setOnlineChannel(p, bIsOnlineChannel);
 }
 
 #ifdef __cplusplus

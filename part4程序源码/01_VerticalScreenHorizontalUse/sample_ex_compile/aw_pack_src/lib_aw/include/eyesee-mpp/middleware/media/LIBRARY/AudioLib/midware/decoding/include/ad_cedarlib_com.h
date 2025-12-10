@@ -20,7 +20,7 @@ typedef struct __ASTREAM_FIFO
     unsigned int      prefetchIdx;
     alib_int32        ValidchunkCnt;
     alib_uint32       maxchunkNum;
-    alib_int64        NowPTSTime;
+    alib_int64        NowPTSTime; //not used.
 	alib_int64        dLastValidPTS;
 }astream_fifo_t;
 

@@ -20,6 +20,13 @@
 #include "../include/isp_type.h"
 #include "../include/isp_comm.h"
 
+#if (ISP_VERSION == 601 || ISP_VERSION == 602 || ISP_VERSION == 606)
+#define INI_PATH "/data/vendor/camera/"
+#define ANDROID_TUNING
+#else
+#define INI_PATH "/tmp/"
+#endif
+
 #define AW_ERR_VI_INVALID_PARA            -1
 #define AW_ERR_VI_INVALID_DEVID           -2
 #define AW_ERR_VI_INVALID_CHNID           -3
@@ -52,6 +59,7 @@ typedef enum {
 	HW_ISP_CFG_TUNING                  = 0x03,
 	HW_ISP_CFG_TUNING_TABLES           = 0x04,
 	HW_ISP_CFG_DYNAMIC                 = 0x05,
+	HW_ISP_CFG_TUNING_ENCODER          = 0x06,
 	HW_ISP_CFG_GROUP_COUNT
 } hw_isp_cfg_groups;
 
@@ -118,14 +126,6 @@ typedef enum {
 	HW_ISP_CFG_TUNING_DPC                      = 0x00008000,
 	HW_ISP_CFG_TUNING_ENCPP_SHARP_COMM         = 0x00010000,
 	HW_ISP_CFG_TUNING_SENSOR                   = 0x00020000,
-
-	/* vencoder param */
-	HW_VENCODER_CFG_TUNING_COMMON              = 0x00100000,
-	HW_VENCODER_CFG_TUNING_VBR                 = 0x00200000,
-	HW_VENCODER_CFG_TUNING_AVBR                = 0x00400000,
-	HW_VENCODER_CFG_TUNING_FIXQP               = 0x00800000,
-	HW_VENCODER_CFG_TUNING_PROC                = 0x01000000,
-	HW_VENCODER_CFG_TUNING_SAVEBSFILE          = 0x02000000,
 } hw_isp_cfg_tuning_ids;
 
 typedef enum {
@@ -168,6 +168,26 @@ typedef enum {
 } hw_isp_cfg_dynamic_ids;
 
 typedef enum {
+	/* tuning encoder */
+	HW_VENCODER_CFG_TUNING_BASE                = 0x00000001,
+	HW_VENCODER_CFG_TUNING_CONSTRAINTFLAG      = 0x00000002,
+	HW_VENCODER_CFG_TUNING_SAVEBSFILE          = 0x00000004,
+	HW_VENCODER_CFG_TUNING_PROC                = 0x00000008,
+	HW_VENCODER_CFG_TUNING_JPEGQUALITY         = 0x00000010,
+	HW_VENCODER_CFG_TUNING_QPCONTROL           = 0x00000020,
+	HW_VENCODER_CFG_TUNING_VBR                 = 0x00000040,
+	HW_VENCODER_CFG_TUNING_D3D                 = 0x00000080,
+	HW_VENCODER_CFG_TUNING_RIGIOND3D           = 0x00000100,
+	HW_VENCODER_CFG_TUNING_VE2ISP              = 0x00000200,
+	HW_VENCODER_CFG_TUNING_SUPERFRAME          = 0x00000400,
+	HW_VENCODER_CFG_TUNING_ROI                 = 0x00000800,
+	HW_VENCODER_CFG_TUNING_MOTIONSEARCH        = 0x00001000,
+	HW_VENCODER_CFG_TUNING_H264VUITIMING       = 0x00002000,
+	HW_VENCODER_CFG_TUNING_H265VUITIMING       = 0x00004000,
+	HW_VENCODER_CFG_TUNING_SPECIAL             = 0x00008000,
+} hw_isp_cfg_tuning_encoder_ids;
+
+typedef enum {
 	/*isp_ctrl*/
 	ISP_CTRL_MODULE_EN = 0,
 	ISP_CTRL_DIGITAL_GAIN,
@@ -183,12 +203,26 @@ typedef enum {
 	ISP_CTRL_AF_METERING,
 	ISP_CTRL_COLOR_TEMP,
 	ISP_CTRL_EV_IDX,
+	ISP_CTRL_MAX_EV_IDX,
 	ISP_CTRL_PLTM_HARDWARE_STR,
 	ISP_CTRL_ISO_LUM_IDX,
 	ISP_CTRL_COLOR_SPACE,
 	ISP_CTRL_VENC2ISP_PARAM,
 	ISP_CTRL_NPU_NR_PARAM,
 	ISP_CTRL_TOTAL_GAIN,
+	ISP_CTRL_AE_EV_LV,
+	ISP_CTRL_AE_EV_LV_ADJ,
+	ISP_CTRL_AE_WEIGHT_LUM,
+	ISP_CTRL_AE_LOCK,
+	ISP_CTRL_AE_FACE_CFG,
+	ISP_CTRL_MIPI_SWITCH,
+	ISP_CTRL_AE_TABLE,
+	ISP_CTRL_AE_STATS,
+	ISP_CTRL_IR_STATUS,
+	ISP_CTRL_IR_AWB_GAIN,
+	ISP_CTRL_READ_BIN_PARAM,
+	ISP_CTRL_AE_ROI_TARGET,
+	ISP_CTRL_AI_ISP_PROCESS,
 } hw_isp_ctrl_cfg_ids;
 
 typedef enum {
@@ -260,6 +294,8 @@ struct isp_test_enable_cfg {
 struct isp_test_special_ctrl_cfg {
 	HW_S8 ir_mode;
 	HW_S8 color_space;
+	HW_S8 hflip;
+	HW_S8 vflip;
 };
 
 /* isp_test_param cfg */
@@ -288,6 +324,11 @@ struct isp_ae_pub_cfg {
 	HW_S32		conv_data_index;
 	HW_S32		blowout_pre_en;
 	HW_S32		blowout_attr;
+	HW_S32		reserve0;
+	HW_S32		reserve1;
+	HW_S32		reserve2;
+	HW_S32		reserve3;
+	HW_S32		reserve4;
 };
 
 struct isp_ae_table_cfg {
@@ -362,6 +403,10 @@ struct isp_af_fine_search_cfg {
 	HW_S32		auto_en;
 	HW_S32		single_en;
 	HW_S32		step;
+	HW_S32		reserve0;
+	HW_S32		reserve1;
+	HW_S32		reserve2;
+	HW_S32		reserve3;
 };
 
 struct isp_af_refocus_cfg {
@@ -599,60 +644,50 @@ struct isp_tuning_wdr_table_cfg {
 };
 
 /* vencoder parameter */
-#define VENCODER_RC_THRD_SIZE 12
 #define VENCODER_FILENAME_LEN 256
-typedef struct vencoder_common_cfg {
-	/* static vencoder param */
+typedef struct vencoder_base_cfg {
 	HW_S32 EncodeFormat;
-	HW_S32 MaxKeyInterval;
 	HW_S32 SrcPicWidth;
 	HW_S32 SrcPicHeight;
-	HW_S32 InputPixelFormat;
-	HW_S32 Rotate;
 	HW_S32 DstPicWidth;
 	HW_S32 DstPicHeight;
+	HW_S32 MaxKeyInterval;
 	HW_S32 mBitRate;
-	HW_S32 SbmBufSize;
-	HW_S32 Level;
+	HW_S32 OnlineEn;
+	HW_S32 GdcEn;
+	HW_S32 EncppEn;
+	HW_S32 GrayEn;
+	HW_S32 MirrorEn;
+	HW_S32 DisReduceRecRef;
+	HW_S32 Rotate;
+	HW_S32 InputPixelFormat;
 	HW_S32 Profile;
-	HW_S32 FastEncFlag;
-	HW_S32 IQpOffset;
-	HW_S32 mbPintraEnable;
-	HW_S32 mMaxQp;
-	HW_S32 mMixQp;
-	HW_S32 mInitQp;
-	HW_S32 enGopMode;
-	/*RC PARAM*/
-	HW_S32 RCEnable;
-	/*3DNR*/
-	HW_S32 Flag_3DNR;
-	HW_S32 ThrdI;
-	HW_S32 ThrdP;
-	HW_S32 MaxReEncodeTimes;
-} vencoder_common_cfg_t;
+	HW_S32 Level;
+	HW_S32 SbmBufSize;
+	HW_S32 ChromeQpOffset;
+	HW_S32 RecRefLbcMode;
+	HW_S32 GopMode;
+	HW_S32 RCMode;
+	HW_S32 ProduceMode;
+	HW_S32 mbPIntraEnable;
+	HW_S32 mFastEncFlag;
+	HW_S32 FrameRate;
+	HW_S32 SmallSearchEn;
+	HW_S32 CropEn;
+	HW_S32 Crop_X;
+	HW_S32 Crop_Y;
+	HW_S32 Crop_Width;
+	HW_S32 Crop_Height;
+} vencoder_base_cfg_t;
 
-typedef struct vencoder_vbr_cfg {
-	HW_S32 mMaxBitRate;
-	HW_S32 mMinBitRate;
-} vencoder_vbr_cfg_t;
-
-typedef struct vencoder_avbr_cfg {
-	HW_S32 mMaxBitRate;
-	HW_S32 mMinBitRate;
-	HW_S32 mQuality;
-} vencoder_avbr_cfg_t;
-
-typedef struct vencoder_fixqp_cfg {
-	HW_S32 mIQp;
-	HW_S32 mPQp;
-} vencoder_fixqp_cfg_t;
-
-typedef struct vencoder_proc_cfg {
-	HW_S32 ProcEnable;
-	HW_S32 ProcFreq;
-	/*unit is ms*/
-	HW_S32 StatisBitRateTime;
-} vencoder_proc_cfg_t;
+typedef struct vencoder_h264ConstraintFlag_cfg {
+	HW_U8 h264_constraint_0;
+	HW_U8 h264_constraint_1;
+	HW_U8 h264_constraint_2;
+	HW_U8 h264_constraint_3;
+	HW_U8 h264_constraint_4;
+	HW_U8 h264_constraint_5;
+} vencoder_h264ConstraintFlag_cfg_t;
 
 typedef struct vencoder_savebsfile_cfg {
 	HW_CHAR Filename[VENCODER_FILENAME_LEN];
@@ -662,14 +697,150 @@ typedef struct vencoder_savebsfile_cfg {
 	HW_S32 Save_end_time;
 } vencoder_savebsfile_cfg_t;
 
+typedef struct vencoder_proc_cfg {
+	HW_S32 ProcEnable;
+	HW_S32 ProcFreq;
+	/*unit is ms*/
+	HW_S32 StatisBitRateTime;
+	HW_S32 StatisFrmRateTime;
+} vencoder_proc_cfg_t;
+
+typedef struct vencoder_jpeg_quality_cfg {
+	HW_S32 JpegQuality;
+} vencoder_jpeg_quality_cfg_t;
+
+typedef struct vencoder_QPcontrol_cfg {
+	HW_S32 FixQPEn;
+	HW_S32 Fix_I_Qp;
+	HW_S32 Fix_P_Qp;
+	HW_S32 InitQp;
+	HW_S32 Min_I_Qp;
+	HW_S32 Max_I_Qp;
+	HW_S32 Min_P_Qp;
+	HW_S32 Max_P_Qp;
+	HW_S32 MbQPLimitEn;
+} vencoder_QPcontrol_cfg_t;
+
+typedef struct vencoder_vbr_cfg {
+	HW_S32 I2PSceneCoef[3];
+	HW_S32 I2PMoveCoef[5];
+	HW_S32 BitsClipDisDefault;
+	HW_S32 BitsClipMode;
+	HW_S32 BitsClipCoef[5][2];
+	HW_S32 BitsClipGopRtEn;
+	HW_S32 BitsClipGopRtTh[3];
+	HW_S32 mQuality;
+	HW_S32 mPFrmBitsCoef;
+	HW_S32 mIFrmBitsCoef;
+} vencoder_vbr_cfg_t;
+
+typedef struct vencoder_d3d_cfg {
+	HW_U8 d3d_en;
+	HW_U8 d3d_max_mv_th;
+	HW_U8 d3d_max_mad_th;
+	HW_U8 d3d_pix_level_en;
+	HW_U8 d3d_pix_diff_th;
+	HW_U8 d3d_smooth_en;
+	HW_U8 min_coef;
+	HW_U8 max_coef;
+	HW_U8 extreme_d3d_en;
+	HW_U8 extreme_d3d_max_mv_th;
+	HW_U8 extreme_d3d_max_mad_th;
+	HW_U8 extreme_d3d_pix_level_en;
+	HW_U8 extreme_d3d_pix_diff_th;
+	HW_U8 extreme_d3d_smooth_en;
+	HW_U8 extreme_min_coef;
+	HW_U8 extreme_max_coef;
+	HW_S32 zero_mv_ratio_th;
+} vencoder_d3d_cfg_t;
+
+typedef struct vencoder_region_d3d_cfg {
+	HW_S32 region_d3d_en;
+	HW_S32 dis_default_para;
+	HW_S32 hor_region_num;
+	HW_S32 ver_region_num;
+	HW_S32 hor_expand_num;
+	HW_S32 ver_expand_num;
+	HW_S32 motion_coef[4];
+	HW_S32 zero_mv_rate_th[3];
+	HW_S32 static_coef[3];
+	HW_S32 chroma_offset;
+} vencoder_region_d3d_cfg_t;
+
+typedef struct vencoder_ve2isp_cfg {
+	HW_S32 d2d_limit_en;
+	HW_S32 d2d_level[6];
+} vencoder_ve2isp_cfg_t;
+
+typedef struct vencoder_super_frame_cfg {
+	HW_S32 super_frm_mode;
+	HW_S32 MaxReEncodeTimes;
+	HW_S32 super_i_frm_bits;
+	HW_S32 super_p_frm_bits;
+	HW_S32 p2i_ratio;
+} vencoder_super_frame_cfg_t;
+
+typedef struct vencoder_roi_cfg {
+	HW_S32 roi_idx;
+	HW_S32 roi_en;
+	HW_S32 abs_qp_en;
+	HW_S32 roi_qp;
+	HW_S32 roi_x_bgn;
+	HW_S32 roi_y_bgn;
+	HW_S32 roi_width;
+	HW_S32 roi_height;
+} vencoder_roi_cfg_t;
+
+typedef struct vencoder_motion_search_cfg {
+	HW_S32 motion_search_en;
+	HW_S32 dis_default_para;
+	HW_S32 hor_region_num;
+	HW_S32 ver_region_num;
+	HW_S32 large_mv_th;
+	HW_S32 large_mv_ratio_th;
+	HW_S32 non_zero_mv_ratio_th;
+	HW_S32 large_sad_ratio_th;
+} vencoder_motion_search_cfg_t;
+
+typedef struct vencoder_h264VuiTiming_cfg {
+	HW_S32 timing_info_present_flag;
+	HW_S32 fixed_frame_rate_flag;
+	HW_S32 num_units_in_tick;
+	HW_S32 time_scale;
+} vencoder_h264VuiTiming_cfg_t;
+
+typedef struct vencoder_h265VuiTiming_cfg {
+	HW_S32 timing_info_present_flag;
+	HW_S32 num_units_in_tick;
+	HW_S32 time_scale;
+	HW_S32 ticks_poc_diff_one_minus1;
+} vencoder_h265VuiTiming_cfg_t;
+
+typedef struct vencoder_special_cfg {
+	HW_S32 d3d_in_i_frm_en;
+	HW_S32 i_frm_mb_rc_min_status;
+	HW_S32 tight_mb_qp_en;
+	HW_S32 weak_text_th;
+} vencoder_special_cfg_t;
+
 #ifdef ANDROID_VENCODE
 typedef struct vencoder_tuning_param_cfg {
-	vencoder_common_cfg_t common_cfg; 			/* id: 0x0300100000 */
-	vencoder_vbr_cfg_t vbr_cfg;					/* id: 0x0300200000 */
-	vencoder_avbr_cfg_t avbr_cfg;				/* id: 0x0300400000 */
-	vencoder_fixqp_cfg_t fixqp_cfg;				/* id: 0x0300800000 */
-	vencoder_proc_cfg_t proc_cfg;				/* id: 0x0301000000 */
-	vencoder_savebsfile_cfg_t savebsfile_cfg;	/* id: 0x0302000000 */
+	vencoder_base_cfg_t base_cfg;                             /* id: 0x0600000001 */
+	vencoder_h264ConstraintFlag_cfg_t h264ConstraintFlag_cfg; /* id: 0x0600000002 */
+	vencoder_savebsfile_cfg_t savebsfile_cfg;                 /* id: 0x0600000004 */
+	vencoder_proc_cfg_t proc_cfg;                             /* id: 0x0600000008 */
+	vencoder_jpeg_quality_cfg_t jpeg_quality_cfg;             /* id: 0x0600000010 */
+	vencoder_QPcontrol_cfg_t QPcontrol_cfg;                   /* id: 0x0600000020 */
+	vencoder_vbr_cfg_t vbr_cfg;                               /* id: 0x0600000040 */
+	vencoder_d3d_cfg_t d3d_cfg;                               /* id: 0x0600000080 */
+	vencoder_region_d3d_cfg_t region_d3d_cfg;                 /* id: 0x0600000100 */
+	vencoder_ve2isp_cfg_t ve2isp_cfg;                         /* id: 0x0600000200 */
+	vencoder_super_frame_cfg_t super_frame_cfg;               /* id: 0x0600000400 */
+	vencoder_roi_cfg_t roi_cfg;                               /* id: 0x0600000800 */
+	vencoder_motion_search_cfg_t motion_search_cfg;           /* id: 0x0600001000 */
+	vencoder_h264VuiTiming_cfg_t h264VuiTiming_cfg;           /* id: 0x0600002000 */
+	vencoder_h265VuiTiming_cfg_t h265VuiTiming_cfg;           /* id: 0x0600004000 */
+	vencoder_special_cfg_t special_cfg;                       /* id: 0x0600008000 */
 } vencoder_tuning_param_cfg_t;
 
 vencoder_tuning_param_cfg_t *vencoder_tuning_param;
@@ -972,6 +1143,12 @@ struct isp_ae_log_cfg {
 	HW_S32 ae_avg_lum;
 	HW_S32 ae_weight_lum;
 	HW_S32 ae_delta_exp_idx;
+	HW_U32 ev_sensor_exp_line_short;
+	HW_U32 ev_exposure_time_short;
+	HW_U32 ev_analog_gain_short;
+	HW_U32 ev_digital_gain_short;
+	HW_U32 ratio_lm;
+	HW_U16 ae_mode;
 };
 
 struct isp_awb_log_cfg {
@@ -981,6 +1158,9 @@ struct isp_awb_log_cfg {
 	HW_U16 gb_gain;
 	HW_U16 b_gain;
 	HW_S32 color_temp_output;
+	HW_S32 color_temp_target;
+	HW_U16 LightWinNum[10];
+	HW_U16 LightTempMean[10];
 };
 
 struct isp_af_log_cfg {
@@ -993,10 +1173,20 @@ struct isp_af_log_cfg {
 struct isp_iso_log_cfg {
 	HW_U32 gain_idx;
 	HW_U32 lum_idx;
+	HW_S16 temp_enable;
+	HW_S16 temperature;
+	HW_S16 temperature_param[TEMP_COMP_MAX];
 };
 
 struct isp_pltm_log_cfg {
 	HW_U16 pltm_auto_stren;
+	HW_U16 pltm_sharp_ss_compensation;
+	HW_U16 pltm_sharp_ls_compensation;
+	HW_U16 pltm_d2d_compensation;
+	HW_U16 pltm_d3d_compensation;
+	HW_U16 pltm_dark_block_num;
+	HW_S32 cur_pic_lum;
+	HW_S32 tar_pic_lum;
 };
 
 struct isp_log_cfg {
@@ -1031,7 +1221,7 @@ int isp_sensor_otp_init(struct hw_isp_device *isp);
 int isp_sensor_otp_exit(struct hw_isp_device *isp);
 int isp_config_sensor_info(struct hw_isp_device *isp);
 int isp_params_parse(struct hw_isp_device *isp, struct isp_param_config *params, HW_U8 ir, int sync_mode);
-int isp_cfg_bin_parse(struct hw_isp_device *isp, struct isp_param_config *params, char *isp_cfg_bin_path, int sync_mode);
+int isp_cfg_bin_parse(struct hw_isp_device *isp, int rst_en, char *isp_cfg_bin_path, int sync_mode);
 int isp_tuning_reset(struct hw_isp_device *isp, struct isp_param_config *param);
 
 int isp_tuning_update(struct hw_isp_device *isp);

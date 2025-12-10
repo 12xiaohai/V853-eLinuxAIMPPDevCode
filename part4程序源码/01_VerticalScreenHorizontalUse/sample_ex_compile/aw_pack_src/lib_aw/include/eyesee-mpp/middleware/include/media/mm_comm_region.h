@@ -53,7 +53,7 @@ typedef enum INVERT_COLOR_MODE_E
     LESSTHAN_LUM_THRESH = 0,   /* the lum of the video is less than the lum threshold which is set by u32LumThresh  */ 
     MORETHAN_LUM_THRESH,       /* the lum of the video is more than the lum threshold which is set by u32LumThresh  */
     LESSTHAN_LUMDIFF_THRESH,   /* the lum diff between video and overlay area is less than threshold */
-    MORETHAN_LUMDIFF_THRESH,   /* the lum diff between video and overlay area is more than threshold */
+    LESSTHAN_UNIT_LUMDIFF_THRESH,   /* the unit lum diff between video and overlay area is less than threshold */
     INVERT_COLOR_BUTT
 }INVERT_COLOR_MODE_E;
 
@@ -143,7 +143,7 @@ typedef struct ORL_CHN_ATTR_S
         RGN_QUADRANGLE_S    stQuadRangle;   /* config of arbitary quadrilateral line */
     };
     unsigned int mColor;
-    unsigned int mThick;    //line width, (0,7]
+    unsigned int mThick;    //line width, [2,16]
     unsigned int mLayer;                        /* Object Rectangle Label region layer */
 }ORL_CHN_ATTR_S;
 
@@ -220,7 +220,31 @@ typedef struct RGN_CHN_ATTR_S
     RGN_CHN_ATTR_U    unChnAttr;  /* region attribute */
 } RGN_CHN_ATTR_S;
 
+typedef struct RgnChnAttachInfo
+{
+    RGN_HANDLE nHandle;
+    RGN_CHN_ATTR_S stRgnChnAttr;
+}RgnChnAttachInfo;
 
+#define RGN_PACK_MAX_ELEM_CNT (64)
+typedef struct RgnChnAttachPack
+{
+    int nNum;
+    RgnChnAttachInfo RgnChnAttachArray[RGN_PACK_MAX_ELEM_CNT];
+}RgnChnAttachPack;
+
+typedef struct RgnChnAttachDetailInfo
+{
+    RGN_HANDLE nHandle;
+    RGN_ATTR_S *pRgnAttr;
+    RGN_CHN_ATTR_S *pRgnChnAttr;
+    BITMAP_S *pBmp;
+}RgnChnAttachDetailInfo;
+typedef struct RgnChnAttachDetailPack
+{
+    int nNum;
+    RgnChnAttachDetailInfo RgnChnAttachDetailArray[RGN_PACK_MAX_ELEM_CNT];
+}RgnChnAttachDetailPack;
 
 #define RGN_MAX_BMP_UPDATE_NUM 16
 

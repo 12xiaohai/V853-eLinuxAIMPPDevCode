@@ -69,6 +69,10 @@ extern "C"{
 /* efuse error. */
 #define ERR_VENC_EFUSE_ERROR DEF_ERR(MOD_ID_VENC, EN_ERR_LEVEL_ERROR, EN_ERR_EFUSE_ERROR)
 
+/* mark send frame sync */
+#define VENC_VIDEO_FRAME_ID_INVALID 0xFFFF8000
+
+
 /*the nalu type of H264E*/
 typedef enum H264E_NALU_TYPE_E
 {
@@ -252,6 +256,7 @@ typedef enum H264_LEVEL_E {
     H264_LEVEL_42  = 42,     /**< Level 4.2 */
     H264_LEVEL_5   = 50,     /**< Level 5 */
     H264_LEVEL_51  = 51,     /**< Level 5.1 */
+    H264_LEVEL_52  = 52,     /**< Level 5.2 */
     H264_LEVEL_Default = 0,
 }H264_LEVEL_E;
 
@@ -286,6 +291,7 @@ typedef enum H265_LEVEL_E {
     H265_LEVEL_21  = 63,     /**< Level 2.1 */
     H265_LEVEL_3  = 90,     /**< Level 3 */
     H265_LEVEL_31   = 93,     /**< Level 3.1 */
+    H265_LEVEL_4   = 120,     /**< Level 4 */
     H265_LEVEL_41  = 123,     /**< Level 4.1 */
     H265_LEVEL_5  = 150,     /**< Level 5 */
     H265_LEVEL_51   = 153,     /**< Level 5.1 */
@@ -387,13 +393,14 @@ typedef struct VENC_ATTR_S
     unsigned int  SrcPicHeight;                   /* source height of a picture buffer sent to venc channel, in pixel*/
     VIDEO_FIELD_E  Field;
     PIXEL_FORMAT_E PixelFormat;
+    VENC_OUTPUT_FMT OutputFormat;
     enum v4l2_colorspace mColorSpace;
     ROTATE_E Rotate;    /*encoder rotate angle.*/
     unsigned int mOnlineEnable;    /* 1: online, 0: offline.*/
     unsigned int mOnlineShareBufNum; /* only for online. Number of share buffers of CSI and VE, support 1/2.*/
     unsigned int mDropFrameNum;
     VENC_REF_FRAME_LBC_MODE_E mVeRefFrameLbcMode; /* LBC compression mode of encoding reference frame.*/
-    unsigned int mVeRecRefBufReduceDisable; /* Close the VE recreate & reference frame buffer reduce function. 0:enable(by default), 1:disable.*/
+    unsigned int mVeRecRefBufReduceEnable; /* Open the VE recreate & reference frame buffer reduce function. 0:disable(by default), 1:enable.*/
 }VENC_ATTR_S;
 
 typedef enum VENC_GOP_MODE_E
@@ -598,9 +605,9 @@ typedef struct VENC_PARAM_H265_VUI_S {
 } VENC_PARAM_H265_VUI_S;
 
 //need keep same to vencoder.h, DATA_TIME_LENGTH...
-#define  MM_DATA_TIME_LENGTH             24
-#define  MM_INFO_LENGTH                 64
-#define  MM_GPS_PROCESS_METHOD_LENGTH     100
+#define  MM_DATA_TIME_LENGTH			DATA_TIME_LENGTH
+#define  MM_INFO_LENGTH         		INFO_LENGTH
+#define  MM_GPS_PROCESS_METHOD_LENGTH	GPS_PROCESS_METHOD_LENGTH
 typedef struct VENC_EXIFINFO_S //aw
 {
     unsigned char  CameraMake[MM_INFO_LENGTH];
@@ -613,22 +620,29 @@ typedef struct VENC_EXIFINFO_S //aw
     //unsigned int   ThumbLen;
 
     int              Orientation;  //value can be 0,90,180,270 degree
-    unsigned int     fr32ExposureTime; //tag 0x829A, FRACTION32()
-    unsigned int     fr32FNumber; //tag 0x829D, FRACTION32()
+    rational_t ExposureTime; //tag 0x829A, FRACTION32()
+    rational_t FNumber; //tag 0x829D, FRACTION32()
     short           ISOSpeed;//tag 0x8827
 
     //srational_t    ShutterSpeedValue; //tag 0x9201
+    rational_t       Aperture; //tag 0x9202
     //srational_t    BrightnessValue;   //tag 0x9203
-    int    ExposureBiasValueNum; //tag 0x9204
+    srational_t    ExposureBiasValueNum; //tag 0x9204
 
-    short           MeteringMode; //tag 0x9207, ExifMeteringModeType
-    //short           LightSource; //tag 0x9208
-    //short           FlashUsed;     //tag 0x9209
-    unsigned int    fr32FocalLength; //tag 0x920A
+    rational_t       MaxAperture; //tag 0x9205
 
-    //rational_t       DigitalZoomRatio; // tag 0xA404
+    ExifMeteringModeType           MeteringMode; //tag 0x9207
+    ExifLightSource           LightSource; //tag 0x9208
+    ExifFlashType           FlashUsed;     //tag 0x9209
+    rational_t FocalLength; //tag 0x920A
+
+    rational_t       DigitalZoomRatio; // tag 0xA404
+    ExifContrastType     Contrast;     // tag 0xA408
+    ExifSaturationType   Saturation;   // tag 0xA409
+    ExifSharpnessType    Sharpness;    // tag 0xA40A
+    ExifExposureProgramType ExposureProgram; // tag 0x8822
     short           WhiteBalance; //tag 0xA403
-    //short           ExposureMode; //tag 0xA402
+    ExifExposureModeType           ExposureMode; //tag 0xA402
 
     // gps info
     int            enableGpsInfo;

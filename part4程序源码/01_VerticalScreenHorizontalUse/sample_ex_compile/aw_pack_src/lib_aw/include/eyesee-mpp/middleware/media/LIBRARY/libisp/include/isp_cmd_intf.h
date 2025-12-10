@@ -37,6 +37,7 @@ void isp_s_flash_mode(struct isp_lib_context *isp_gen, int value);
 void isp_s_flash_mode_v1(struct isp_lib_context *isp_gen, int value);
 void isp_s_ae_metering_mode(struct isp_lib_context *isp_gen, int value);
 void isp_s_ae_roi(struct isp_lib_context *isp_gen, int value, struct isp_h3a_coor_win *coor);
+void isp_s_ae_face_roi(struct isp_lib_context *isp_gen, int value, struct ae_face_cfg *face_cfg);
 void isp_s_light_mode(struct isp_lib_context *isp_gen, int value);
 void isp_s_exposure_auto(struct isp_lib_context *isp_gen, int value);
 void isp_s_exposure_absolute(struct isp_lib_context *isp_gen, int value);

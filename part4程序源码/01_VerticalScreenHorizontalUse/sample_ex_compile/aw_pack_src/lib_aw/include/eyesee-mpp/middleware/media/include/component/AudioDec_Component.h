@@ -50,6 +50,7 @@ struct AUDIODEC_INPUT_DATA
     COMP_STATETYPE state;
     pthread_mutex_t mStateLock;
     pthread_cond_t mStateCond;
+    char mThreadName[32];
     
     volatile BOOL mWaitAbsValidFlag;
     int nRequestLen; //Set when not enough buffer for component A
@@ -73,6 +74,7 @@ struct AUDIODECDATATYPE {
     COMP_CALLBACKTYPE *pCallbacks;
     void* pAppData;
     COMP_HANDLETYPE hSelf;
+    char mThreadName[32];
 
     COMP_PORT_PARAM_TYPE sPortParam;
     COMP_PARAM_PORTDEFINITIONTYPE sInPortDef;

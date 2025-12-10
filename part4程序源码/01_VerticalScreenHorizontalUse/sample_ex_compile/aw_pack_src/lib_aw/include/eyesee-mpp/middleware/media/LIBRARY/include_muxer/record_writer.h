@@ -26,6 +26,7 @@ extern "C" {
 #endif
 
 #define MAX_VIDEO_TRACK_COUNT (6)
+#define MAX_TRACK_COUNT (MAX_VIDEO_TRACK_COUNT + 2)
 
 typedef enum MUXERMODES {
 	MUXER_MODE_MP4 = 0,
@@ -34,8 +35,8 @@ typedef enum MUXERMODES {
 	MUXER_MODE_AWTS,
 	MUXER_MODE_RAW,
 	MUXER_MODE_TS,
+    MUXER_MODE_WAV,
 
-	MUXER_MODE_USER0,
 	MUXER_MODE_USER1,
 	MUXER_MODE_USER2,
 	MUXER_MODE_USER3,
@@ -149,7 +150,7 @@ typedef struct MediaVideoInfo
 	int create_time;
 	int maxKeyInterval;
     int mVideoEncodeType;   //VENC_CODEC_H264
-    int rotate_degree;
+    int rotate_degree;  //0, 90, 180, 270
     int mStreamId;
 }MediaVideoInfo;
 
@@ -194,7 +195,13 @@ typedef struct CDX_RecordWriter{
 	int (*MuxerIoctrl)(void *handle, unsigned int uCmd, unsigned int uParam, void* pParam2);
 }CDX_RecordWriter;
 
-CDX_RecordWriter *cedarx_record_writer_create(int mode);
+/**
+  create file record writer.
+
+  @param mode
+    MUXERMODES
+*/
+CDX_RecordWriter *cedarx_record_writer_create(MUXERMODES mode);
 void cedarx_record_writer_destroy(void *handle);
 
 #if defined(__cplusplus)

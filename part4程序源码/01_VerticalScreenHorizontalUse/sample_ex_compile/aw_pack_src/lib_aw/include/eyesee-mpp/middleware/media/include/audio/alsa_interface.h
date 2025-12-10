@@ -1,3 +1,4 @@
+/** @file */
 #ifndef __ALSA_COMMON_H__
 #define __ALSA_COMMON_H__
 
@@ -6,6 +7,10 @@
 
 #define AUDIO_VOLUME_MIN    (0)
 #define AUDIO_VOLUME_MAX    (31)
+#define AUDIO_SOFT_VOLUME_MIN    (0)
+#define AUDIO_SOFT_VOLUME_MAX    (255) ///< ref to asound.conf, pcm.PlaybackRateDmix, resolution 256. 256 stand for 256 points, so [0,255]
+#define AUDIO_SOFT_VOLUME_MPP_SCOPE_MIN (-52) ///< @see ref to AW_MPI_AO_SetSoftVolume(AUDIO_DEV AudioDevId, int s32Volume), must equal to scope of s32Volume.
+#define AUDIO_SOFT_VOLUME_MPP_SCOPE_MAX (50) ///< @see AUDIO_SOFT_VOLUME_MPP_SCOPE_MIN
 #define AUDIO_LEFT_INPUT_MIC1 "Left Input Mixer MIC1 Boost"
 #define AUDIO_LEFT_INPUT_MIC2 "Left Input Mixer MIC2 Boost"
 #define AUDIO_RIGHT_INPUT_MIC1 "Right Input Mixer MIC1 Boost"
@@ -84,6 +89,7 @@
 #define AUDIO_LINEOUT_SWITCH    "LINEOUT"
 #define AUDIO_LINEOUT_MUX       "LINEOUT Output Select"
 #define AUDIO_LINEOUT_VOL       "LINEOUT volume"
+#define AUDIO_LINEOUT_SOFT_VOL  "Soft Volume Master"
 #define AUDIO_PA_SWITCH         "SPK"
 
 // about mic
@@ -121,14 +127,14 @@
 typedef struct PCM_CONFIG_S
 {
     snd_pcm_t *handle;
-    char cardName[16];
+    char cardName[128]; ///< pcm handle identifier. e.g., PlaybackRateDmix:16000,1,960
 
     snd_pcm_format_t format;
-    unsigned int chnCnt;
+    unsigned int chnCnt; //underlying channel number of alsaLib, including refChn if aec is enable.
     unsigned int sampleRate;
 
-    snd_pcm_uframes_t bufferSize;
-    snd_pcm_uframes_t chunkSize;    //unit: sample number
+    snd_pcm_uframes_t bufferSize;   //unit: sample number
+    snd_pcm_uframes_t chunkSize;    //unit: sample number, we take it as period_size. 0:use default value.
 
     unsigned int bitsPerSample;
     unsigned int significantBitsPerSample;
@@ -137,7 +143,7 @@ typedef struct PCM_CONFIG_S
     int aec_delay_ms;
     
     int snd_card_id;
-    int read_pcm_aec;             // used to indicate aec condition or normal one when read pcm
+    int read_pcm_aec;             // used to indicate aec condition or normal one when read pcm. 1:aec, 0:normal
 } PCM_CONFIG_S;
 
 typedef struct AIO_MIXER_S {
@@ -169,6 +175,8 @@ int alsaMixerSetAudioCodecAdcHpf(AIO_MIXER_S *mixer,  int value);
 
 int alsaMixerSetVolume(AIO_MIXER_S *mixer, int playFlag, long value);
 int alsaMixerGetVolume(AIO_MIXER_S *mixer, int playFlag, long *value);
+int alsaMixerSetSoftVolume(AIO_MIXER_S *mixer, int playFlag, long value);
+int alsaMixerGetSoftVolume(AIO_MIXER_S *mixer, int playFlag, long *value);
 int alsaMixerSetMute(AIO_MIXER_S *mixer, int playFlag, int bEnable);
 int alsaMixerGetMute(AIO_MIXER_S *mixer, int playFlag, int *pVolVal);
 void updateDebugfsByChnCnt(int pcmFlag, int cnt);
@@ -177,6 +185,6 @@ int alsaGetDelay(PCM_CONFIG_S *pcmCfg);
 int alsaMixerSetPlayBackPA(AIO_MIXER_S *mixer, int bHighLevel);
 int alsaMixerGetPlayBackPA(AIO_MIXER_S *mixer, int *pbHighLevel);
 
-int alsaMixerSetMic2Enable(AIO_MIXER_S *mixer,  int value);
+int alsaMixerSetMicXEnable(AIO_MIXER_S *mixer, int nMicId, int value);
 int alsaMixerSetLineInEnable(AIO_MIXER_S *mixer,  int value);
 #endif /* __ALSA_COMMON_H__ */

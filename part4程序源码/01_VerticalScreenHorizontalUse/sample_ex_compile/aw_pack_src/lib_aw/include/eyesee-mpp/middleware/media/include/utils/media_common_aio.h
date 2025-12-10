@@ -23,6 +23,8 @@ AUDIO_SAMPLE_RATE_E map_SampleRate_to_AUDIO_SAMPLE_RATE_E(unsigned int nSampleRa
 AUDIO_BIT_WIDTH_E map_BitWidth_to_AUDIO_BIT_WIDTH_E(unsigned int nBitWidth);
 unsigned int map_AUDIO_SAMPLE_RATE_E_to_SampleRate(AUDIO_SAMPLE_RATE_E eSampleRate);
 unsigned int map_AUDIO_BIT_WIDTH_E_to_BitWidth(AUDIO_BIT_WIDTH_E eBitWidth);
+int judgeAudioChnNumBySoundMode(AUDIO_SOUND_MODE_E eSoundmode, int *pnMicNum, int *pnRefNum);
+AUDIO_SOUND_MODE_E judgeInitialSoundModeOfAudioInput(AIO_ATTR_S *pAiAttr);
 
 #ifdef __cplusplus
 }

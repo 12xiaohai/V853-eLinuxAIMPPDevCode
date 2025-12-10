@@ -6,7 +6,11 @@
 
 #include "../V4l2Camera/sunxi_camera_v2.h"
 
+#if (ISP_VERSION == 603)
+#define HW_VIDEO_DEVICE_NUM 4
+#else
 #define HW_VIDEO_DEVICE_NUM 16
+#endif
 
 struct video_plane {
 	unsigned int size;
@@ -55,8 +59,10 @@ struct video_fmt {
 	enum dma_buffer_num dma_buf_num;
 	enum mipi_pix_num pixel_num;
 	unsigned char tdm_speed_down_en;
+	unsigned char large_dma_merge_en;
 	unsigned char video_selection_en;
 	struct video_selection_rect rect;
+	unsigned int tdm_rxbuf_cnt;
 };
 
 struct osd_fmt {
@@ -123,6 +129,7 @@ int video_free_buffers(struct isp_video_device *video);
 int video_wait_buffer(struct isp_video_device *video, int timeout);
 int video_dequeue_buffer(struct isp_video_device *video,	struct video_buffer *buffer);
 int video_queue_buffer(struct isp_video_device *video, unsigned int buf_id);
+int video_s_selection(struct isp_video_device *video, struct v4l2_selection *s);
 int video_stream_on(struct isp_video_device *video);
 int video_stream_off(struct isp_video_device *video);
 
@@ -148,7 +155,14 @@ int video_event_subscribe(struct isp_video_device *video, unsigned int type);
 int video_event_unsubscribe(struct isp_video_device *video, unsigned int type);
 int video_wait_event(struct isp_video_device *video);
 int video_dequeue_event(struct isp_video_device *video, struct video_event *vi_event);
+int video_set_sync_ctrl(struct isp_video_device *video, const struct csi_sync_ctrl *sync);
 int video_set_top_clk(struct isp_video_device *video, unsigned int rate);
 int video_set_selection(struct isp_video_device *video, struct video_selection_rect *rect);
+
+int video_set_isp_d3d_lbc_ratio(struct isp_video_device *video, unsigned int d3d_lbc_ratio);
+int video_set_isp_bk_buffer_align(struct isp_video_device *video, struct bk_buffer_align *bk_align);
+int video_set_isp_bk_width_stride(struct isp_video_device *video, unsigned char enable);
+int video_set_tdm_drop_frame_num(struct isp_video_device *video, unsigned int drop_num);
+int video_tdm_raw_npu_mode_disable(struct isp_video_device *video, unsigned char not_npu_mode);
 
 #endif /* __VIDEO_H_ */

@@ -62,6 +62,8 @@
 
 #include <vector>
 #include <map>
+#include <thread>
+#include <future>
 
 #include <stdio.h>
 #include <assert.h>
@@ -70,8 +72,7 @@
 #include <fcntl.h>
 
 #include <utils/Mutex.h>
-#include <RecorderMode.h>
-#include <mm_comm_region.h>
+#include <MessageManager.h>
 
 //#include <EyeseeCamera.h>
 //#include <MediaCallbackDispatcher.h>
@@ -79,9 +80,11 @@
 #include <CallbackDispatcher.h>
 #include <type_camera.h>
 #include <VencParameters.h>
-
+#include <MuxCacheManager.h>
 //#include <EyeseeISE.h>
 
+#include <RecorderMode.h>
+#include <mm_comm_region.h>
 #include <vencoder.h>
 //#include <system/audio.h>
 #include <mm_comm_aio.h>
@@ -145,14 +148,20 @@ struct OutputSinkInfo
     MEDIA_FILE_FORMAT_E mOutputFormat;
     int mOutputFd;
     int mFallocateLen;
+    int mMaxDurationMs;   //>0: valid, <=0:invalid, use global value. max file duration.
     bool mCallbackOutFlag;
+    bool mbBufFromCacheFlag; //true: need include data in cache manager.
+    bool mbAddRepairInfo; //add repair info to file.
     OutputSinkInfo()
     {
         mMuxerId = -1;
         mOutputFormat = MEDIA_FILE_FORMAT_DEFAULT;
         mOutputFd = -1;
         mFallocateLen = 0;
+        mMaxDurationMs = 0;
         mCallbackOutFlag = false;
+        mbBufFromCacheFlag = false;
+        mbAddRepairInfo = false;
     }
 };
 
@@ -166,6 +175,7 @@ struct SinkParam
     bool  bCallbackOutFlag;
     bool  bBufFromCacheFlag;
     bool  bAddRepairInfo;
+    RecordFileDurationPolicy mFileDurationPolicy;
     SinkParam()
     {
         memset(this, 0, sizeof(*this));
@@ -403,7 +413,7 @@ private:
     };
 
     //VencParameters
-    std::map<int, VencParameters*> mVencInfoMap;    //vencId, VencParameters
+    std::map<int, VencParameters*> mVencInfoMap;    //vencId, VencParameters. vencId == streamId = portIndex of mpi_mux.
     std::map<int, VI_DEV> mVeVippBindMap;           //vencId, VI_DEV
     int mVeChnCount;
     //VencParameters mVencParam;
@@ -468,11 +478,11 @@ private:
     int64_t mMaxFileDuration; //unit:ms
     //int64_t mImpactFileDuration[2]; //unit:ms
     int mMuxCacheDuration;  //unit:ms
+    MuxStreamIdsInfo mMuxCacheStrmIds; ///< cacheManager receive some streamIds.
     int64_t mMaxFileSizeBytes;  //unit:byte
     int mMuxerIdCounter;
     //callback_out_data_type mCallbackOutDataType;   //CALLBACK_OUT_DATA_VIDEO_ONLY
-    std::vector<int> mCallbackOutStreamIdList;  //when in callback out mode, select which streams are transported through callback. when size is 0, means all sent out.
-    std::vector<int> mMuxCacheStrmIdsList;
+    //std::vector<int> mCallbackOutStreamIdList;  //when in callback out mode, select which streams are transported through callback. when size is 0, means all sent out.
     Mutex mEncBufLock;
     std::list<VEncBuffer> mIdleEncBufList;
     std::list<VEncBuffer> mReadyEncBufList;
@@ -483,27 +493,96 @@ private:
     AUDIO_DEV mAiDev;
     AI_CHN mAiChn;
     AENC_CHN mAeChn;
+    int mAudioStreamId;
     TENC_CHN mTeChn;
 
     int64_t last_frm_pts;
     int64_t frm_cnt;
     int gps_state;
+    int mTextStreamId;
 
     //VENC_CHN_ATTR_S mVEncChnAttr;
     //VENC_PARAM_REF_S mVEncRefParam;
-    int64_t rec_start_timestamp;  // unit:us. added to record the pts of the first audio frm sent to a enc, used to decide if drop video frame.
+    /**
+      added to record the pts of the first audio frm sent to a enc, used to decide if drop video frame.
+      used as recording start pts.
+      unit:us. 
+    */
+    int64_t rec_start_timestamp;
 
     AIO_ATTR_S mAioAttr;
     AENC_CHN_ATTR_S mAEncChnAttr;
     TENC_CHN_ATTR_S mTEncChnAttr;
 
-    MUX_GRP mMuxGrp;
-    MUX_GRP_ATTR_S mMuxGrpAttr;
+    //MUX_GRP mMuxGrp;
+    //MUX_GRP_ATTR_S mMuxGrpAttr;
+    enum class SendStreamThreadState
+    {
+        Invalid = 0,
+        Idle = 1,
+        Executing,
+        Pause,
+    };
+    enum class SendStreamMsgType
+    {
+        SetState = 0,
+        Stop,
+    };
+    std::thread *mpSendStreamThread;
+    SendStreamThreadState mSendStreamThreadState;
+    status_t SendStreamToMuxChn(MUX_CHN muxChn, MuxStreamNode *pStreamNode);
+    status_t SendStreamToMux(MuxStreamNode *pStreamNode);
+    status_t SendAllCacheManagerStreamToMuxChn(MUX_CHN muxChn);
+    status_t ReleaseVideoStreamToVencChn(VENC_STREAM_S *pVencStream, int nStreamId, VENC_CHN VeChn);
+    status_t ReleaseAudioStreamToAencChn(AUDIO_STREAM_S *pAencStream, int nStreamId, AENC_CHN AeChn);
+    status_t ReleaseTextStreamToTencChn(TEXT_STREAM_S *pTencStream, int nStreamId, TENC_CHN TeChn);
+    /**
+      put v/a/t encStream to streamNodeList.
+      @param XencStream
+        video, audio, text stream.
+      @param nStreamId
+      @return
+        streamNode.
+    */
+    template<class T> MuxStreamNode* PutStreamToNodeList(const T& XencStream, int nStreamId)
+    {
+        std::lock_guard<std::mutex> autoLock(mStreamNodeLock);
+        MuxStreamNode* pStreamNode = NULL;
+        auto iter = mStreamNodeListMap.find(nStreamId);
+        if(iter != mStreamNodeListMap.end())
+        {
+            std::list<MuxStreamNode>& streamNodeList = iter->second;
+            streamNodeList.emplace_back(XencStream, nStreamId);
+            pStreamNode = &streamNodeList.back();
+            pStreamNode->mRefCnt++;
+        }
+        else
+        {
+            aloge("fatal error! recorder[%d] has not streamNodeList for streamId[%d]", mRecorderId, nStreamId);
+        }
+        return pStreamNode;
+    }
+    void SendStreamThreadFunc(std::promise<int> SendStreamPromise);
+    std::future<int> mSendStreamFuture;
+    MessageManager *mpSendStreamMsgMgr;
+    /**
+      mStreamNodeListMap is used to store streams from venc/aenc/tenc chns. It allows out-of-order returning frame which
+      is very important for multi muxChns operating.
+      streamId - std::list<MuxStreamNode>
+    */
+    std::map<int, std::list<MuxStreamNode>> mStreamNodeListMap;
+    std::mutex mStreamNodeLock; //if use with mMuxChnLock, must first lock mStreamNodeLock, then lock mMuxChnLock.
+    MuxCacheManager *mpMuxCacheManager; ///<  used to store streams for impact files.
+    //friend class MuxCacheManager;
+    
     std::vector<MUX_CHN> mMuxChns;    //belong to mux group, match with mMuxChnAttrs
     std::vector<MUX_CHN_ATTR_S> mMuxChnAttrs;    //for addOutputFormatAndOutputSink(). match with mMuxChns
-    std::map<int, RecordFileDurationPolicy> mPolicy;
+    std::map<int, RecordFileDurationPolicy> mPolicyMap;//muxerId - fileDurationPolicy
+    std::map<int, MuxStreamIdsInfo> mMuxStrmIdsMap;//muxerId - MuxStreamIdsInfo, indicate to send which streams to which muxChn.
+    std::vector<MUX_CHN> mForbidMuxChns; //forbid to send stream to these muxChns. for switchImpactFile().
+    std::mutex mMuxChnLock;
 
-    RecAVSync *mAVSync;
+    //RecAVSync *mAVSync;
     int64_t mIgnoreAudioBlockNum;
     int64_t mIgnoreAudioBytes; //unit:byte
     int64_t mPauseAudioDuration; //unit:ms
@@ -1102,6 +1181,7 @@ public:
 
     status_t getVencParameters(int VencId, VencParameters &param);
 
+    status_t setmuxChnsps(VENC_CHN VeChn, PAYLOAD_TYPE_E VideoEncoder, MUX_CHN muxChn);
     status_t setmuxsps(VENC_CHN VeChn, PAYLOAD_TYPE_E VideoEncoder);
 
 private:
@@ -1265,12 +1345,13 @@ public:
          */
         MEDIA_RECORDER_TRACK_INFO_LIST_END          = 2000,
 
-	//MEDIA_RECORDER_INFO_VENDOR_START            = 3000,
-	MEDIA_RECORDER_INFO_NEED_SET_NEXT_FD           = 3001,
-	MEDIA_RECORDER_INFO_RECORD_FILE_DONE           = 3002,
-	//MEDIA_RECORDER_INFO_DISK_SPEED_TOO_SLOW        = 3003,
-	//MEDIA_RECORDER_INFO_WRITE_DISK_ERROR           = 3004,
-	MEDIA_RECORDER_INFO_VENC_BUFFER_USAGE              = 3005,    //vbs buffer usage percentage
+        //MEDIA_RECORDER_INFO_VENDOR_START            = 3000,
+        MEDIA_RECORDER_INFO_NEED_SET_NEXT_FD           = 3001,
+        MEDIA_RECORDER_INFO_RECORD_FILE_DONE           = 3002, ///< Asynchronous callback Message of record file done, called in EyeseeRecorder::EventHandler thread.
+        MEDIA_RECORDER_INFO_RECORD_FILE_DONE_SYNC      = 3003, ///< Synchronous callback Message of record file done, called in muxChn thread.
+        //MEDIA_RECORDER_INFO_DISK_SPEED_TOO_SLOW        = 3003,
+        //MEDIA_RECORDER_INFO_WRITE_DISK_ERROR           = 3004,
+        MEDIA_RECORDER_INFO_VENC_BUFFER_USAGE              = 3005,    //vbs buffer usage percentage
     };
 
     /**
@@ -1328,7 +1409,7 @@ public:
      * @param type callback_out_data_type.
      */
     //status_t setBsFrameRawDataType(callback_out_data_type type); /* effected only when OutputFormat is OUTPUT_FORMAT_RAW */
-    status_t setCallbackOutStreamList(std::vector<int> nStreamIds); /* effected only when OutputFormat is OUTPUT_FORMAT_RAW, select which streams are transported through callback. */
+    //status_t setCallbackOutStreamList(std::vector<int> nStreamIds); /* effected only when OutputFormat is OUTPUT_FORMAT_RAW, select which streams are transported through callback. */
     status_t getEncDataHeader(int VencId, VencHeaderData *pEncDataHeader);
     VEncBuffer* getOneBsFrame();
     void freeOneBsFrame(VEncBuffer *pEncData);
@@ -1365,12 +1446,16 @@ public:
     //status_t setImpactOutputFile(int fd, int64_t fallocateLength, int muxerId=0);
     //status_t setImpactOutputFile(char* path, int64_t fallocateLength, int muxerId=0);
     status_t setMuxCacheDuration(int nCacheMs);
-    status_t setMuxCacheStrmIds(std::vector<int> nStreamIds);
-    status_t switchFileNormal(int fd, int64_t fallocateLength, int muxerId=0, bool bIncludeCache = false);
+    status_t setMuxCacheStrmIds(MuxStreamIdsInfo &StrmIdsInfo);
+    status_t setMuxStrmIds(int nMuxerId, MuxStreamIdsInfo &StrmIdsInfo);
     /**
-     * bIncludeCache: new file will include cache data first, then venc data.
-     */
-    status_t switchFileNormal(char* path, int64_t fallocateLength, int muxerId=0, bool bIncludeCache = false);
+      normal switch file. not consider muxCache.
+    */
+    status_t switchFileNormal(int fd, int64_t fallocateLength, int muxerId=0);
+    status_t switchFileNormal(char* path, int64_t fallocateLength, int muxerId=0);
+
+    status_t switchImpactFile(int fd, int64_t fallocateLength, int muxerId=0);
+    status_t switchImpactFile(char* path, int64_t fallocateLength, int muxerId=0);
     status_t setThmPic(char *p_thm_buff,int thm_size, int muxerId=0);
     status_t setSwitchFileDurationPolicy(int muxerId, const RecordFileDurationPolicy ePolicy);
     status_t getSwitchFileDurationPolicy(int muxerId, RecordFileDurationPolicy *pPolicy) const;
@@ -1385,7 +1470,7 @@ private:
     status_t config_AENC_CHN_ATTR_S();
     status_t config_TENC_CHN_ATTR_S();
     status_t config_VENC_CHN_ATTR_S(int VencId);
-    status_t config_MUX_GRP_ATTR_S();
+    status_t config_MUX_CHN_ATTR_S(MUX_CHN_ATTR_S *pMuxChnAttr, OutputSinkInfo *pSinkInfo);
     status_t pushOneBsFrame(CDXRecorderBsInfo *frame);
 };
 

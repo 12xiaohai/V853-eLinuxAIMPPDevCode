@@ -465,7 +465,7 @@ typedef struct VID_PERFORMANCE
 typedef void* VideoDecoder;
 
 //* NO.1
-extern void AddVDPlugin(void);
+void AddVDPlugin(void);
 
 //* NO.2
 VideoDecoder* CreateVideoDecoder(void);

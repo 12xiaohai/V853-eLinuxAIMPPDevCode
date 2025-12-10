@@ -47,10 +47,18 @@ extern "C" {
 #define H264_VERSION2_USE64 0
 #define SHARP_ROI_MAX_NUM (8)
 
+#define JPEG_MAX_SEG_LEN (65523)
+
 #define AE_AVG_ROW  (18)
 #define AE_AVG_COL  (24)
 #define AE_AVG_NUM  (432)
 #define AE_HIST_NUM (256)
+
+#define DEFAULT_MOTION_SEARCH_HOR_REGION_NUM (10)
+#define DEFAULT_MOTION_SEARCH_VER_REGION_NUM (5)
+#define DEFAULT_REGION_D3D_HOR_REGION_NUM    (30)
+#define DEFAULT_REGION_D3D_VER_REGION_NUM    (17)
+#define DEFAULT_REGION_D3D_RESULT_NUM        (1)
 
 /** VENC_IN is used to identify inputs to an VENC function.  This designation
     will also be used in the case of a pointer that points to a parameter
@@ -68,6 +76,19 @@ extern "C" {
 
 #define PRINTF_CODE_POS logd("func = %s, line = %d", __FUNCTION__, __LINE__);
 
+typedef enum {
+    VENC_FLUSH_INPUT_BUFFER,
+    VENC_FLUSH_OUTPUT_BUFFER,
+    VENC_FLUSH_IN_AND_OUT_BUFFER,
+}VencFlushType;
+
+typedef struct VencRect {
+    int nLeft;
+    int nTop;
+    int nWidth;
+    int nHeight;
+}VencRect;
+
 typedef enum eVencEncppScalerRatio {
     VENC_ISP_SCALER_0       = 0, //not scaler
     VENC_ISP_SCALER_EIGHTH  = 1, //scaler 1/8 write back
@@ -78,6 +99,8 @@ typedef enum eVencEncppScalerRatio {
 typedef struct sWbYuvParam{
     unsigned int bEnableWbYuv;
     unsigned int nWbBufferNum;
+    unsigned int bEnableCrop;
+    VencRect     sWbYuvcrop;
     eVencEncppScalerRatio scalerRatio;
 }sWbYuvParam;
 
@@ -97,6 +120,48 @@ typedef struct s3DfilterParam{
     unsigned char min_coef;                //* range[0~16]: minimum weight of 3d filter
     unsigned char max_coef;                //* range[0~16]: maximum weight of 3d filter,
 }s3DfilterParam;
+
+typedef struct {
+    int pix_x_bgn;
+    int pix_x_end;
+    int pix_y_bgn;
+    int pix_y_end;
+    int total_num;
+    int zero_mv_num;
+    int is_possible_static;
+    int is_really_static;
+    float zero_mv_rate;
+}VencRegionD3DRegion;
+
+typedef struct sVencRegionD3DResult VencRegionD3DResult;
+struct sVencRegionD3DResult{
+    int total_region_num;
+    int static_region_num;
+    VencRegionD3DRegion *region;
+    VencRegionD3DResult **prev;
+    VencRegionD3DResult **next;
+};
+
+typedef struct {
+    int en_region_d3d;
+    int dis_default_para;
+    int result_num;
+    int hor_region_num;
+    int ver_region_num;
+    int hor_expand_num;
+    int ver_expand_num;
+    int lv_weak_th[9];
+    float zero_mv_rate_th[3];
+    unsigned char chroma_offset;
+    unsigned char static_coef[3];          //* fallow by zero_mv_rate
+    unsigned char motion_coef[4];          //* fallow by MoveStatus
+}VencRegionD3DParam;
+
+typedef struct {
+    unsigned char  en_extreme_d3d;
+    float          zero_mv_ratio_th;
+    s3DfilterParam ex_d3d_param;
+}VencExtremeD3DParam;
 
 typedef struct s2DfilterParam{
     unsigned char enable_2d_filter;
@@ -124,6 +189,24 @@ typedef struct {
     int d3d_level; //[1,1024], 256 means 1X
     MovingLevelInfo mMovingLevelInfo;
 }VencVe2IspParam;
+
+typedef struct {
+    int en_d2d_limit;
+    int d2d_level[6];
+}VencVe2IspD2DLimit;
+
+typedef struct {
+    int dis_default_d2d;
+    int d2d_min_lv_th;
+    int d2d_max_lv_th;
+    int d2d_min_lv_level;
+    int d2d_max_lv_level;
+    int dis_default_d3d;
+    int d3d_min_lv_th;
+    int d3d_max_lv_th;
+    int d3d_min_lv_level;
+    int d3d_max_lv_level;
+}VencRotVe2Isp;
 
 typedef struct {
     int dis_default_para;
@@ -172,7 +255,8 @@ typedef enum eGdcWarpType
 	Gdc_Warp_Fish2Wide,
 	Gdc_Warp_Perspective,
 	Gdc_Warp_BirdsEye,
-	Gdc_Warp_User
+	Gdc_Warp_User,
+	Gdc_Warp_Zoom,
 }eGdcWarpType;
 
 typedef enum eRotationType
@@ -187,6 +271,7 @@ typedef enum {
     CAMERA_ADAPTIVE_STATIC = 0,
     CAMERA_FORCE_STATIC = 1,
     CAMERA_FORCE_MOVING = 2,
+    CAMERA_ADAPTIVE_MOVING_AND_STATIC = 3,
     CAMERA_STATUS_NUM
 }eCameraStatus;
 
@@ -439,46 +524,100 @@ typedef struct srational_t {
     int den;
 }srational_t;
 
+typedef enum ExifExposureProgramType {
+    EXPOSURE_PROGRAM_MANUAL = 1,
+    EXPOSURE_PROGRAM_NORMAL = 2,
+    EXPOSURE_PROGRAM_APERTURE_PRIORITY = 3,
+    EXPOSURE_PROGRAM_SHUTTER_PRIORITY = 4,
+    EXPOSURE_PROGRAM_CREATIVE = 5,
+    EXPOSURE_PROGRAM_ACTION = 6,
+    EXPOSURE_PROGRAM_PORTRAIT = 7,
+    EXPOSURE_PROGRAM_LANDSCAPE = 8,
+} ExifExposureProgramType;
+
 typedef enum ExifMeteringModeType {
-    UNKNOWN_AW_EXIF,
-    AVERAGE_AW_EXIF,
-    CENTER_AW_EXIF,
-    SPOT_AW_EXIF,
-    MULTISPOT_AW_EXIF,
-    PATTERN_AW_EXIF,
-    PARTIAL_AW_EXIF,
-    OTHER_AW_EXIF     = 255,
+    METERING_MODE_UNKNOWN = 0,
+    METERING_MODE_AVERAGE = 1,
+    METERING_MODE_CENTER = 2,
+    METERING_MODE_SPOT = 3,
+    METERING_MODE_MULTI_SPOT = 4,
+    METERING_MODE_MULTI_SEGMENT = 5,
+    METERING_MODE_PARTIAL = 6,
+    METERING_MODE_OTHERS = 255,
 } ExifMeteringModeType;
 
+typedef enum {
+    LIGHT_SOURCE_UNKNOWN = 0,
+    LIGHT_SOURCE_SUNLIGHT = 1,
+    LIGHT_SOURCE_FLUORESCENT_LAMP = 2,
+    LIGHT_SOURCE_TUNGSTEN_LAMP = 3,
+    LIGHT_SOURCE_FLASH_LAMP = 4,
+    LIGHT_SOURCE_OVERCAST = 9,
+    LIGHT_SOURCE_CLOUDY = 10,
+    LIGHT_SOURCE_SHADOW = 11,
+    LIGHT_SOURCE_SUNLIGHT_FLUORESCENT_LAMP = 12,
+    LIGHT_SOURCE_WHITE_DAY_FLUORESCENT_LAMP = 13,
+    LIGHT_SOURCE_COOL_COLOUR_FLUORESCENT_LAMP = 14,
+    LIGHT_SOURCE_WHITE_FLUORESCENT_LAMP = 15,
+    LIGHT_SOURCE_STANDARD_LAMP_A = 17,
+    LIGHT_SOURCE_STANDARD_LAMP_B = 18,
+    LIGHT_SOURCE_STANDARD_lAMP_C = 19,
+    LIGHT_SOURCE_D55 = 20,
+    LIGHT_SOURCE_D65 = 21,
+    LIGHT_SOURCE_D75 = 22,
+    LIGHT_SOURCE_D50= 23,
+    LIGHT_SOURCE_PROJECTION_ROOM_LAMP = 24,
+    LIGHT_SOURCE_OTHERS = 255
+}ExifLightSource;
+
+typedef enum ExifFlashType {
+    FLASH_CLOSE = 0,
+    FLASH_OPEN = 1,
+    FLASH_OPEN_EN_RETURN = 5,
+    FLASH_OPEN_DIS_RETURN = 7,
+    FLASH_OPEN_FORCE = 9,
+    FLASH_OPEN_FORCE_DIS_RETURN = 13,
+    FLASH_OPEN_FORCE_EN_RETURN = 15,
+    FLASH_CLOSE_FORCE = 16,
+    FLASH_CLOSE_AUTO = 24,
+    FLASH_OPEN_AUTO = 25,
+    FLASH_OPEN_AUTO_DIS_RETURN = 29,
+    FLASH_OPEN_AUTO_EN_RETURN = 31,
+    FLASH_NO_FUNCTION = 32,
+    FLASH_OPEN_RED_EYE = 65,
+    FLASH_OPEN_RED_EYE_DIS_RETURN = 69,
+    FLASH_OPEN_RED_EYE_EN_RETURN = 71,
+    FLASH_OPEN_FORCE_RED_EYE = 73,
+    FLASH_OPEN_FORCE_RED_EYE_DIS_RETURN = 77,
+    FLASH_OPEN_FORCE_RED_EYE_EN_RETURN = 79,
+    FLASH_OPEN_AUTO_RED_EYE = 89,
+    FLASH_OPEN_AUTO_RED_EYE_DIS_RETURN = 93,
+    FLASH_OPEN_AUTO_RED_EYE_EN_RETURN = 95,
+} ExifFlashType;
+
 typedef enum ExifExposureModeType {
-    EXPOSURE_AUTO_AW_EXIF,
-    EXPOSURE_MANUAL_AW_EXIF,
-    EXPOSURE_AUTO_BRACKET_AW_EXIF,
+    EXPOSURE_MODE_AUTO = 0,
+    EXPOSURE_MODE_MANUAL = 1,
+    EXPOSURE_MODE_AUTO_BRACKET = 2,
 }ExifExposureModeType;
 
-typedef enum {
-    UNKNOWN = 0,
-    SUNLIGHT = 1,
-    TUNGSTEN_LAMP = 2,
-    FILAMENT_LAMP = 3,
-    FLASH_LAMP = 4,
-    OVERCAST = 9,
-    CLOUDY = 10,
-    SHADOW = 11,
-    INCANDESCENT_LAMP = 12,
-    WHITE_DAY_FLUORESCENT_LAMP = 13,
-    COOL_COLOUR_FLUORESCENT_LAMP = 14,
-    WHITE_FLUORESCENT_LAMP = 15,
-    STANDARD_LAMP_A = 17,
-    STANDARD_LAMP_B = 18,
-    STANDARD_lAMP_C = 19,
-    D55 = 20,
-    D65 = 21,
-    D75 = 22,
-    D50= 23,
-    PROJECTION_ROOM_LAMP = 24,
-    OTHERS = 255
-}ExifLightSource;
+typedef enum ExifContrastType {
+    CONTRAST_NORMAL = 0,
+    CONTRAST_SOFT = 1,
+    CONTRAST_HARD = 2,
+} ExifContrastType;
+
+typedef enum ExifSaturationType {
+    SATRATION_NORMAL = 0,
+    SATRATION_LOW = 1,
+    SATRATION_HIGH = 2,
+} ExifSaturationType;
+
+typedef enum ExifSharpnessType {
+    SHARPNESS_NORMAL = 0,
+    SHARPNESS_SOFT = 1,
+    SHARPNESS_HARD = 2,
+} ExifSharpnessType;
 
 typedef struct EXIFInfo {
     unsigned char  CameraMake[INFO_LENGTH];
@@ -502,14 +641,18 @@ typedef struct EXIFInfo {
 
     rational_t       MaxAperture; //tag 0x9205
 
-    short           MeteringMode; //tag 0x9207
-    short           LightSource; //tag 0x9208
-    short           FlashUsed;     //tag 0x9209
+    ExifMeteringModeType  MeteringMode; //tag 0x9207
+    ExifLightSource       LightSource; //tag 0x9208
+    ExifFlashType         FlashUsed;   //tag 0x9209
     rational_t       FocalLength; //tag 0x920A
 
     rational_t       DigitalZoomRatio; // tag 0xA404
+    ExifContrastType     Contrast;     // tag 0xA408
+    ExifSaturationType   Saturation;   // tag 0xA409
+    ExifSharpnessType    Sharpness;    // tag 0xA40A
+    ExifExposureProgramType ExposureProgram; // tag 0x8822
     short           WhiteBalance; //tag 0xA403
-    short           ExposureMode; //tag 0xA402
+    ExifExposureModeType    ExposureMode; //tag 0xA402
 
     // gps info
     int            enableGpsInfo;
@@ -529,13 +672,6 @@ typedef struct EXIFInfo {
 
     int             thumb_quality;
 }EXIFInfo;
-
-typedef struct VencRect {
-    int nLeft;
-    int nTop;
-    int nWidth;
-    int nHeight;
-}VencRect;
 
 typedef enum VENC_YUV2YUV {
     VENC_YCCToBT601,
@@ -594,6 +730,13 @@ typedef enum VENC_PIXEL_FMT {
     VENC_PIXEL_LBC_AW, //* for v5v200 and newer ic //19
 }VENC_PIXEL_FMT;
 
+typedef enum VENC_OUTPUT_FMT {
+    VENC_OUTPUT_SAME_AS_INPUT = 0,
+    VENC_OUTPUT_YUV420,
+    VENC_OUTPUT_YUV444,
+    VENC_OUTPUT_YUV422,
+}VENC_OUTPUT_FMT;
+
 typedef struct VencThumbInfo {
     unsigned int        nThumbSize;
     unsigned char*      pThumbBuf;
@@ -610,6 +753,7 @@ typedef struct VencBaseConfig {
     unsigned int        nDstHeight;
     unsigned int        nStride;
     VENC_PIXEL_FMT      eInputFormat;
+    VENC_OUTPUT_FMT     eOutputFormat;
     struct ScMemOpsS *memops;
     VeOpsS*           veOpsS;
     void*             pVeOpsSelf;
@@ -630,7 +774,7 @@ typedef struct VencBaseConfig {
 	//*for debug
     unsigned int extend_flag;  //* flag&0x1: printf reg before interrupt
                                //* flag&0x2: printf reg after  interrupt
-    eVeLbcMode   rec_lbc_mode; //*0: disable, 1:1.5x , 2: 2.0x, 3: 2.5x, 4: no_lossy
+    eVeLbcMode   rec_lbc_mode; //*0: disable, 1:1.5x , 2: 2.0x, 3: 2.5x, 4: no_lossy, 5:1.0x
 	//*for debug(end)
 }VencBaseConfig;
 
@@ -719,6 +863,7 @@ typedef struct VencCopyROIConfig {
     unsigned char         *pRoiCAddrVir;
     unsigned long         pRoiYAddrPhy;
     unsigned long         pRoiCAddrPhy;
+    int                   size;
 }VencCopyROIConfig;
 
 
@@ -788,6 +933,15 @@ typedef struct {
     long long bin_start;
     long long bin_end;
     long long bin_time;
+    long long r3d_start;
+    long long r3d_end;
+    long long r3d_time;
+    long long sei_start;
+    long long sei_end;
+    long long sei_time;
+    long long rst_start;
+    long long rst_end;
+    long long rst_time;
     long long int_start;
     long long int_end;
     long long int_time;
@@ -802,175 +956,6 @@ typedef struct {
     float nMoveCoef[5];
 }VencIPTargetBitsRatio;
 
-typedef struct VeProcEncH265Info
-{
-    float                       Lambda;
-    float                       LambdaC;
-    float                       LambdaSqrt;
-
-    unsigned int                uIntraCoef0;
-    unsigned int                uIntraCoef1;
-    unsigned int                uIntraCoef2;
-    unsigned int                uIntraTh32;
-    unsigned int                uIntraTh16;
-    unsigned int                uIntraTh8;
-
-    unsigned int                uInterTend;
-    unsigned int                uSkipTend;
-    unsigned int                uMergeTend;
-
-    unsigned char               fast_intra_en;
-    unsigned char               adaptitv_tu_split_en;
-    unsigned int                combine_4x4_md_th;
-}VeProcEncH265Info;
-
-typedef struct VeProcEncInfo {
-    unsigned int                nChannelNum;
-
-    unsigned char               bEnEncppSharp;
-
-    unsigned int                bOnlineMode;
-    unsigned int                bOnlineChannel;
-    unsigned int                nOnlineShareBufNum;
-
-    unsigned int                nCsiOverwriteFrmNum;
-
-    int                         nInputFormat;
-
-    int                         nRecLbcMode;
-
-    unsigned int                nInputWidth;
-    unsigned int                nInputHeight;
-    unsigned int                nDstWidth;
-    unsigned int                nDstHeight;
-    unsigned int                nStride;
-
-    unsigned int                rot_angle;
-
-	int 						crop_left;
-	int 						crop_top;
-	int 						crop_width;
-	int 						crop_height;
-
-    unsigned int                nProfileIdc;
-    unsigned int                nLevelIdc;
-
-    int                         nBitRate;
-    int                         nFrameRate;
-
-    VENC_RC_MODE				eRcMode;
-    VENC_VIDEO_GOP_MODE         eGopMode;
-    int                         nIDRItl;
-    int                         nProductMode;
-    int                         nColourMode;
-
-    VencFixQP                   fix_qp;
-
-    int                         i_qp_max;
-    int                         i_qp_min;
-    int                         p_qp_max;
-    int                         p_qp_min;
-    int                         nInitQp;
-	int                         en_mb_qp_limit;
-
-	VencROIConfig               sRoi[8];
-
-	unsigned int				avr_bit_rate;
-	unsigned int				real_bit_rate;
-	unsigned int				avr_frame_rate;
-	unsigned int				real_frame_rate;
-
-	int							vbv_size;
-	int							UnusedBufferSize;
-	int							nValidFrameNum;
-	int							nValidDataSize;
-
-    int                         eSliceType;
-    int                         nCurrQp;
-    int                         nFrameIndex;
-    int                         nTotalIndex;
-
-    int                         nRealBits;
-    int                         nTargetBits;
-
-    StatisticTime               sStaTime;
-
-    /******************Advanced Parameters******************/
-    unsigned char               bIntra4x4;
-    unsigned char               bIntraInP;
-
-    unsigned char               f2d_en;
-    unsigned int                f2d_strength_uv;
-    unsigned int                f2d_strength_y;
-    unsigned int                f2d_th_uv;
-    unsigned int                f2d_th_y;
-
-    unsigned char               f3d_en;
-    unsigned int                f3d_max_mv_th;
-    unsigned int                f3d_max_mad_th;
-    unsigned char               f3d_pix_level_en;
-    unsigned int                f3d_max_pix_diff_th;
-    unsigned char               f3d_smooth_en;
-    unsigned int                f3d_min_coef;
-    unsigned int                f3d_max_coef;
-
-    unsigned char               mv_tu_split_en;
-    unsigned char               mv_amp_en;
-    int                         mv_lambda_offset;
-    unsigned char               pmv_en;
-    unsigned char               cpmv_case5_en;
-    unsigned char               cpmv_case4_en;
-    unsigned char               cpmv_case3_en;
-    unsigned int                cpmv_case3_th;
-    unsigned char               cpmv_case2_en;
-    unsigned int                cpmv_case2_th;
-    unsigned char               cpmv_case1_en;
-    unsigned int                cpmv_case1_th;
-    unsigned char               mv_denoise_en;
-    unsigned int                noise_estimate;
-
-    VencIPTargetBitsRatio       sBitsRatio;
-    VencTargetBitsClipParam     sBitsClipParam;
-    VencAeDiffParam             sAeDiffParam;
-
-    unsigned char               MbRcEn;
-    int                         EnIFrmMbRcMoveStatus;
-    unsigned char               MadEn;
-    float                       MadHistogram[12][11];
-    unsigned char               ClassifyTh[12];
-    unsigned char               MdEn;
-    float                       MdHistogram[16][11];
-    int                         MdQp[16];
-    unsigned int                MdLevel[16];
-
-	unsigned int				uMaxBitRate;
-	int 						nQuality;
-    int                         nIFrmBitsCoef;
-    int                         nPFrmBitsCoef;
-
-    unsigned int                uSceneStatus;
-    unsigned int                uMoveStatus;
-    unsigned int                uMovingLevel;
-    float                       BinImgRatio;
-
-    int                         nEnvLv;
-    int                         nAeWeightLum;
-
-    unsigned char               en_camera_move;
-    unsigned char               lens_moving;
-
-    int                         bIsOverflow;
-    int                         nIspScale;
-
-    int                         nSuperFrameMode;
-    int                         nSuperMaxIBytes;
-    int                         nSuperMaxPBytes;
-    int                         nSuperMaxTimes;
-    float                       nSuperP2IBitsRatio;
-    int                         nSuperTotalTimes;
-    VeProcEncH265Info           sH265Info;
-}VeProcEncInfo;
-
 typedef struct VencOutputBuffer {
     int               nID;
     long long         nPts;
@@ -983,6 +968,11 @@ typedef struct VencOutputBuffer {
     FrameInfo       frame_info;
     unsigned int   nSize2;
     unsigned char* pData2;
+
+    unsigned int   nExSize0;
+    unsigned int   nExSize1;
+    unsigned char  *pExData0;
+    unsigned char  *pExData1;
 }VencOutputBuffer;
 
 typedef struct VencAllocateBufferParam {
@@ -1109,6 +1099,13 @@ typedef struct VencSuperFrameConfig {
 typedef struct VencBitRateRange {
     int            bitRateMax;
     int            bitRateMin;
+    float          fRangeRatioTh;
+    int            nQualityTh;
+    int            nQualityStep[2];
+    int            nSubQualityDelay;
+    int            nAddQualityDelay;
+    int            nMinQuality;
+    int            nMaxQuality;
 }VencBitRateRange;
 
 typedef struct VencRoiBgFrameRate {
@@ -1223,6 +1220,259 @@ typedef struct VencEncodeTimeS {
     unsigned int                  max_empty_time_frame_num;
 }VencEncodeTimeS;
 
+typedef struct {
+    unsigned char                 reserve_zero : 2;
+    unsigned char                 constraint_5 : 1;
+    unsigned char                 constraint_4 : 1;
+    unsigned char                 constraint_3 : 1;
+    unsigned char                 constraint_2 : 1;
+    unsigned char                 constraint_1 : 1;
+    unsigned char                 constraint_0 : 1;
+}VencH264ConstraintFlag;
+
+typedef struct {
+    unsigned int                  en_force_conf;
+    unsigned int                  left_offset;
+    unsigned int                  right_offset;
+    unsigned int                  top_offset;
+    unsigned int                  bottom_offset;
+}VencForceConfWin;
+
+typedef struct {
+    unsigned char *pBuffer;
+    unsigned int  nBufLen;
+    unsigned int  nDataLen;
+    unsigned int  nType;
+}VencSeiData;
+
+typedef struct {
+    unsigned int nSeiNum;
+    VencSeiData  *pSeiData;
+}VencSeiParam;
+
+typedef enum {
+    BUF_IDLE,
+    BUF_STANDBY,
+    BUF_OCCUPY,
+} VENC_BUF_STATUS;
+
+typedef struct {
+    unsigned char *pBuffer;
+    unsigned int  nBufLen;
+    unsigned int  nDataLen;
+    unsigned int  nFrameRate;
+    VENC_BUF_STATUS eStatus;
+} VencInsertData;
+
+typedef enum {
+    PRODUCT_STATIC_IPC = 0,
+    PRODUCT_MOVING_IPC = 1,
+    PRODUCT_DOORBELL = 2,
+    PRODUCT_CDR = 3,
+    PRODUCT_SDV = 4,
+    PRODUCT_PROJECTION = 5,
+    PRODUCT_UAV = 6,       // Unmanned Aerial Vehicle
+    PRODUCT_NUM,
+}eVencProductMode;
+
+typedef struct VencProductModeInfo {
+    eVencProductMode eProductMode;
+    unsigned int     nDstWidth;
+    unsigned int     nDstHeight;
+    int              nBitrate;   // bps
+    int              nFrameRate;
+}VencProductModeInfo;
+
+typedef struct VeProcEncH265Info
+{
+    float                       Lambda;
+    float                       LambdaC;
+    float                       LambdaSqrt;
+
+    unsigned int                uIntraCoef0;
+    unsigned int                uIntraCoef1;
+    unsigned int                uIntraCoef2;
+    unsigned int                uIntraTh32;
+    unsigned int                uIntraTh16;
+    unsigned int                uIntraTh8;
+
+    unsigned int                uInterTend;
+    unsigned int                uSkipTend;
+    unsigned int                uMergeTend;
+
+    unsigned char               fast_intra_en;
+    unsigned char               adaptitv_tu_split_en;
+    unsigned int                combine_4x4_md_th;
+}VeProcEncH265Info;
+
+typedef struct VeProcEncInfo {
+    unsigned int                nChannelNum;
+
+    unsigned char               bEnEncppSharp;
+
+    unsigned int                bOnlineMode;
+    unsigned int                bOnlineChannel;
+    unsigned int                nOnlineShareBufNum;
+
+    unsigned int                nCsiOverwriteFrmNum;
+
+    int                         nInputFormat;
+
+    int                         nRecLbcMode;
+
+    unsigned int                nInputWidth;
+    unsigned int                nInputHeight;
+    unsigned int                nDstWidth;
+    unsigned int                nDstHeight;
+    unsigned int                nStride;
+
+    unsigned int                rot_angle;
+
+	int 						crop_left;
+	int 						crop_top;
+	int 						crop_width;
+	int 						crop_height;
+
+    unsigned int                nProfileIdc;
+    unsigned int                nLevelIdc;
+
+    int                         nBitRate;
+    int                         nFrameRate;
+
+    eVencProductMode            nProductMode;
+    VENC_RC_MODE				eRcMode;
+    VENC_VIDEO_GOP_MODE         eGopMode;
+    int                         nIDRItl;
+    int                         nIsIpcCase;
+    int                         nColourMode;
+
+    VencFixQP                   fix_qp;
+
+    int                         ori_i_qp_max;
+    int                         i_qp_max;
+    int                         i_qp_min;
+    int                         ori_p_qp_max;
+    int                         p_qp_max;
+    int                         p_qp_min;
+    int                         nInitQp;
+	int                         en_mb_qp_limit;
+
+	VencROIConfig               sRoi[8];
+
+	unsigned int				avr_bit_rate;
+	unsigned int				real_bit_rate;
+	unsigned int				avr_frame_rate;
+	unsigned int				real_frame_rate;
+
+	int							vbv_size;
+	int							UnusedBufferSize;
+	int							nValidFrameNum;
+	int							nValidDataSize;
+    int                         nMaxFrameLen;
+
+    int                         eSliceType;
+    int                         nCurrQp;
+    int                         nFrameIndex;
+    int                         nTotalIndex;
+
+    int                         nRealBits;
+    int                         nTargetBits;
+
+    StatisticTime               sStaTime;
+
+    /******************Advanced Parameters******************/
+    unsigned char               bIntra4x4;
+    unsigned char               bIntraInP;
+    unsigned char               bSmallSearchRange;
+
+    unsigned char               bD3DInIFrm;
+    unsigned char               bTightMbQp;
+    unsigned char               bExtremeD3D;
+
+    unsigned char               f2d_en;
+    unsigned int                f2d_strength_uv;
+    unsigned int                f2d_strength_y;
+    unsigned int                f2d_th_uv;
+    unsigned int                f2d_th_y;
+
+    unsigned char               f3d_en;
+    unsigned int                f3d_max_mv_th;
+    unsigned int                f3d_max_mad_th;
+    unsigned char               f3d_pix_level_en;
+    unsigned int                f3d_max_pix_diff_th;
+    unsigned char               f3d_smooth_en;
+    unsigned int                f3d_min_coef;
+    unsigned int                f3d_max_coef;
+
+    VencRegionD3DParam          sRegionD3DParam;
+
+    unsigned char               mv_tu_split_en;
+    unsigned char               mv_amp_en;
+    int                         mv_lambda_offset;
+    unsigned char               pmv_en;
+    unsigned char               cpmv_case5_en;
+    unsigned char               cpmv_case4_en;
+    unsigned char               cpmv_case3_en;
+    unsigned int                cpmv_case3_th;
+    unsigned char               cpmv_case2_en;
+    unsigned int                cpmv_case2_th;
+    unsigned char               cpmv_case1_en;
+    unsigned int                cpmv_case1_th;
+    unsigned char               mv_denoise_en;
+    unsigned int                noise_estimate;
+
+    VencIPTargetBitsRatio       sBitsRatio;
+    VencTargetBitsClipParam     sBitsClipParam;
+    VencAeDiffParam             sAeDiffParam;
+
+    float                       WeakTextTh;
+    unsigned char               MbRcEn;
+    int                         EnIFrmMbRcMoveStatus;
+    unsigned char               MadEn;
+    unsigned char               FrmAvgMad;
+    float                       MadHistogram[12][11];
+    unsigned char               ClassifyTh[12];
+    unsigned char               MdEn;
+    unsigned char               FrmAvgMd;
+    float                       MdHistogram[16][11];
+    int                         MdQp[16];
+    unsigned int                MdLevel[16];
+
+	unsigned int				uMaxBitRate;
+	int 						nQuality;
+    int                         nIFrmBitsCoef;
+    int                         nPFrmBitsCoef;
+
+    unsigned int                uSceneStatus;
+    unsigned int                uMoveStatus;
+    unsigned int                uMovingLevel;
+    float                       BinImgRatio;
+
+    int                         nEnvLv;
+    int                         nAeWeightLum;
+
+    unsigned char               en_camera_move;
+    unsigned char               lens_moving;
+    int                         lens_moving_num;
+    int                         lens_moving_max_qp;
+
+    VencVe2IspD2DLimit          ve2isp_d2d;
+    VencRotVe2Isp               rot_ve2isp;
+    int                         isp_d2d_level;
+    int                         isp_d3d_level;
+
+    int                         bIsOverflow;
+    int                         nIspScale;
+
+    int                         nSuperFrameMode;
+    int                         nSuperMaxIBytes;
+    int                         nSuperMaxPBytes;
+    int                         nSuperMaxTimes;
+    float                       nSuperP2IBitsRatio;
+    int                         nSuperTotalTimes;
+    VeProcEncH265Info           sH265Info;
+}VeProcEncInfo;
+
 typedef enum VENC_INDEXTYPE {
     VENC_IndexParamBitrate                = 0x0,
     /**< reference type: int */
@@ -1252,6 +1502,8 @@ typedef enum VENC_INDEXTYPE {
     /**< reference type: int */
     VENC_IndexParamColorFormat,
     /**< reference type: VENC_PIXEL_FMT */
+    VENC_IndexParamOutputFormat,
+    /**< reference type: VENC_OUTPUT_FMT */
     VENC_IndexParamSize,
     /**< reference type: VencSize(read only) */
     VENC_IndexParamSetVbvSize,
@@ -1414,11 +1666,8 @@ typedef enum VENC_INDEXTYPE {
     /**< reference type: unsigned int; 0: day, 1: night*/
     VENC_IndexParamIsNightCaseFlag,
 
-    /**< reference type: unsigned int; 0: normal case, 1: ipc case*/
+    /**< reference type: VencProductModeInfo* */
     VENC_IndexParamProductCase,
-
-    /**< reference type: unsigned int; 0: sp2305 1: c2398*/
-    VENC_IndexParamSensorType,
 
     /**< reference type: VencEnvLvRange */
     VENC_IndexParamSetEnvLvTh,
@@ -1432,7 +1681,7 @@ typedef enum VENC_INDEXTYPE {
     /**< reference type: Set or Get VencMotionSearchParam* */
     VENC_IndexParamMotionSearchParam,
 
-    /**< reference type: Get VencMotionSearchRegin* */
+    /**< reference type: Get VencMotionSearchResult* */
     VENC_IndexParamMotionSearchResult,
 
     /**< reference type: unsigned int; 0: have enought vbv buf, 1: vbv buf is full*/
@@ -1488,6 +1737,57 @@ typedef enum VENC_INDEXTYPE {
 
     /* set RecRef buf reduce function; type: int; 0: disbale, 1: enable*/
     VENC_IndexParamEnableRecRefBufReduceFunc,
+
+    /**< reference type: float [0,100]*/
+    VENC_IndexParamWeakTextTh,
+
+    /**< reference type: int [0,1]*/
+    VENC_IndexParamEnD3DInIFrm,
+
+    /**< reference type: int [0,1]*/
+    VENC_IndexParamEnTightMbQp,
+
+    /**< reference type: VencExtremeD3DParam */
+    VENC_IndexParamSetExtremeD3D,
+
+    /**< reference type: Set or Get VencRegionD3DParam* */
+    VENC_IndexParamRegionD3DParam,
+
+    /**< reference type: Get VencRegionD3DResult* */
+    VENC_IndexParamRegionD3DResult,
+
+    /**< reference type: int */
+    VENC_IndexParamChromaQPOffset,
+
+    /**< reference type:  VencH264ConstraintFlag */
+    VENC_IndexParamH264ConstraintFlag,
+
+    /**< reference type: VencVe2IspD2DLimit */
+    VENC_IndexParamVe2IspD2DLimit,
+
+    /**< reference type: int [0,1] */
+    VENC_IndexParamEnSmallSearchRange,
+
+    /**< reference type: VencForceConfWin */
+    VENC_IndexParamForceConfWin,
+
+    /**< reference type: VencRotVe2Isp */
+    VENC_IndexParamRotVe2Isp,
+
+    /**< reference type: VencSeiParam */
+    VENC_IndexParamSeiParam,
+
+	/**< reference type: VencInsertData */
+	VENC_IndexParamInsertData,
+
+	/**< reference type: VENC_BUF_STATUS */
+	VENC_IndexParamInsertDataBufStatus,
+
+    /**< reference type: int [0,1] */
+    VENC_IndexParamEncAndDecCase, /*encoder and decoder run at the same time. need reset the whole ve*/
+
+    /**< reference type: int [1,51] */
+    VENC_IndexParamLensMovingMaxQp,
 }VENC_INDEXTYPE;
 
 typedef struct VencEnvLvRange {
@@ -1538,6 +1838,7 @@ typedef struct VbvInfo {
     unsigned int coded_frame_num;
     unsigned int coded_size;
     unsigned int maxFrameLen;
+    unsigned char *start_addr;
 }VbvInfo;
 
 typedef enum {
@@ -1729,9 +2030,9 @@ typedef struct {
 }VencMBSumInfo;
 
 typedef struct {
-    unsigned char mb_qp; // {5:0}
-    unsigned char mb_skip_flag; // {6}
-    unsigned char mb_en; // {7}
+    unsigned char mb_qp         : 6; // {5:0}
+    unsigned char mb_skip_flag  : 1; // {6}
+    unsigned char mb_en         : 1; // {7}
 }VencMBModeCtrlInfo;
 
 typedef struct {
@@ -1850,7 +2151,7 @@ typedef struct {
     unsigned char     bLbcLossyComEnFlag1_5x;
     unsigned char     bLbcLossyComEnFlag2x;
     unsigned char     bLbcLossyComEnFlag2_5x;
-
+    VencCopyROIConfig RoiConfig;
 }VencEncppFuncParam;
 
 typedef void* VideoEncoder;
@@ -1862,6 +2163,7 @@ int  VencInit(VideoEncoder* pEncoder, VencBaseConfig* pConfig);
 int VencStart(VideoEncoder* pEncoder);
 int VencPause(VideoEncoder* pEncoder);
 int VencReset(VideoEncoder* pEncoder);
+int VencFlush(VideoEncoder* pEncoder, VencFlushType eFlushType);
 
 int VencGetParameter(VideoEncoder* pEncoder, VENC_INDEXTYPE indexType, void* paramData);
 int VencSetParameter(VideoEncoder* pEncoder, VENC_INDEXTYPE indexType, void* paramData);
@@ -1873,9 +2175,9 @@ int VencQueueOutputBuf(VideoEncoder* pEncoder, VencOutputBuffer* pBuffer);
 int VencGetValidInputBufNum(VideoEncoder* pEncoder);
 int VencQueueInputBuf(VideoEncoder* pEncoder, VencInputBuffer *inputbuffer);
 int VencAllocateInputBuf(VideoEncoder* pEncoder, VencAllocateBufferParam *pBufferParam, VencInputBuffer* dst_inputBuf);
-void VencGetVeIommuAddr(VideoEncoder* pEncoder, struct user_iommu_param *pIommuBuf);
-void VencFreeVeIommuAddr(VideoEncoder* pEncoder, struct user_iommu_param *pIommuBuf);
-void VencSetDdrMode(VideoEncoder* pEncoder, int nDdrType);
+int VencGetVeIommuAddr(VideoEncoder* pEncoder, struct user_iommu_param *pIommuBuf);
+int VencFreeVeIommuAddr(VideoEncoder* pEncoder, struct user_iommu_param *pIommuBuf);
+int VencSetDdrMode(VideoEncoder* pEncoder, int nDdrType);
 int VencSetFreq(VideoEncoder* pEncoder, int nVeFreq);
 
 int VencJpegEnc(JpegEncInfo* pJpegInfo, EXIFInfo* pExifInfo,
@@ -1885,7 +2187,7 @@ typedef void* VideoEncoderEncpp;
 
 VideoEncoderEncpp* VencEncppCreate();
 
-void VencEncppDestroy(VideoEncoderEncpp* pEncpp);
+int VencEncppDestroy(VideoEncoderEncpp* pEncpp);
 
 int VencEncppFunction(VideoEncoderEncpp* pEncpp,
                           VencEncppBufferInfo* pInBuffer,
@@ -1910,6 +2212,39 @@ typedef struct
     //other informations about this frame encoding can be added below.
 
 } VencCbInputBufferDoneInfo;
+
+typedef struct
+{
+    int is_static;
+    VideoEncoder* pVideoEnc;
+    VENC_CODEC_TYPE codecType;
+    int parsingStatic;
+    int parsingDynamic;
+    int channnel_id;
+    unsigned int        nInputWidth;
+    unsigned int        nInputHeight;
+    unsigned int        nDstWidth;
+    unsigned int        nDstHeight;
+    VENC_PIXEL_FMT      eInputFormat;
+    VENC_OUTPUT_FMT     eOutputFormat;
+    unsigned int        fps;
+    VencQPRange qp_range;
+    int bit_rate;
+    VencH264Param       h264Param;
+    unsigned int vbv_size;
+    VencForceConfWin conf_win;
+    int jpeg_quality;
+    VencFixQP           fixQP;
+    VencTargetBitsClipParam bits_clip_param;
+    VencVbrParam            sVbrParam;
+    s2DfilterParam m2DfilterParam;
+    s3DfilterParam m3DfilterParam;
+    VencRegionD3DParam mRegionD3DParam;
+    int mb_rc_level;
+    float        weak_text_th;
+    VencH264VideoTiming mH264VideoTiming;
+    VencH265TimingS mH265VideoTiming;
+} VencParamFromFiles;
 
 typedef struct
 {
@@ -1958,6 +2293,8 @@ typedef struct
 } VencCbType;
 
 int VencSetCallbacks(VideoEncoder* pEncoder, VencCbType* pCallbacks, void* pAppData);
+
+typedef void* VENC_DEVICE_HANDLE;
 
 #endif    //_VENCODER_H_
 

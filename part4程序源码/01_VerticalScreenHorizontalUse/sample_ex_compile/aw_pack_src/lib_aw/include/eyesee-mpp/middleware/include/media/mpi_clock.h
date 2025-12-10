@@ -37,7 +37,8 @@ ERRORTYPE AW_MPI_CLOCK_RegisterCallback(CLOCK_CHN ClockChn, MPPCallbackInfo *pCa
  * @param pMediaTime media time in millisecond.
  */
 ERRORTYPE AW_MPI_CLOCK_GetCurrentMediaTime(CLOCK_CHN ClockChn, int* pMediaTime);
-
+ERRORTYPE AW_MPI_CLOCK_SetVps(CLOCK_CHN ClockChn, float fVps);
+ERRORTYPE AW_MPI_CLOCK_GetVps(CLOCK_CHN ClockChn, float *pfVps);
 
 #ifdef __cplusplus
 }

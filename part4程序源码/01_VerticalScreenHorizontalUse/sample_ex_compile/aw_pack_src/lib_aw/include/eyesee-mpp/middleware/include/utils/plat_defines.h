@@ -201,7 +201,7 @@ extern "C"{
 #define DEMUX_MAX_CHN_NUM       16
 
 /* For MUX */
-#define MUX_MAX_GRP_NUM         8
+//#define MUX_MAX_GRP_NUM         8
 #define MUX_MAX_CHN_NUM         16
 
 /* For CLOCK */

@@ -56,14 +56,12 @@ struct isp_lens_config {
 	HW_U16 lens_b_table[ISP_LENS_TBL_SIZE];
 };
 
-#if (ISP_VERSION >= 521)
 struct isp_msc_config {
 	HW_U16 msc_blw_lut[ISP_MSC_TBL_LUT_DLT_SIZE];
 	HW_U16 msc_blh_lut[ISP_MSC_TBL_LUT_DLT_SIZE];
 	HW_U16 msc_blw_dlt_lut[ISP_MSC_TBL_LUT_DLT_SIZE];
 	HW_U16 msc_blh_dlt_lut[ISP_MSC_TBL_LUT_DLT_SIZE];
 };
-#endif
 
 struct isp_gamma_config {
 	HW_U16 gamma_tbl[ISP_GAMMA_TBL_LENGTH]; // for hardware
@@ -82,12 +80,10 @@ struct isp_ae_config {
 struct isp_af_config {
 	HW_U16 af_sap_lim;
 	struct isp_h3a_reg_win af_reg_win;
-#if (ISP_VERSION >= 520)
 	enum isp_af_src af_src;
 	struct isp_af_en_config af_en_cfg;
 	struct isp_af_filter_config af_filter_cfg;
 	unsigned char isp_af_square_lut[ISP_AF_SQUARE_TBL_LUT_SIZE];
-#endif
 };
 
 /*
@@ -136,6 +132,7 @@ struct isp_mode_config {
 	HW_U8 byr_max_bit;
 	HW_U8 rgb_cfg_bit;;
 	HW_U8 wdr_mode;
+	HW_U8 dg_mode;
 	HW_U8 isp_proc_mode;
 	HW_U8 wb_sel;
 	HW_U8 gain_sel;
@@ -213,6 +210,8 @@ struct isp_module_config {
 
 	enum isp_output_speed output_speed;
 
+	void *module_entity;
+
 	//table addr
 #if (ISP_VERSION >= 600)
 	void *fe_table;
@@ -279,7 +278,13 @@ enum isp_features_flags {
 	//ISP_FEATURES_All = (((ISP_FEATURES_MAX -1 ) << 1) -1 ),
 };
 
-void isp_hardware_update(struct isp_module_config *module_cfg);
+struct isp_lib_context;
+void isp_hardware_update(struct isp_lib_context *isp_gen);
 void isp_map_addr(struct isp_module_config *module_cfg, unsigned long vaddr);
+void *isp_module_init(void);
+void isp_module_exit(void *isp_module_core_obj);
+
+int isp_sunxi_set_cfg0(char *key_name, int offset, int len, char *key_buf);
+int isp_sunxi_set_cfg1(char *key_name, int *key_buf);
 
 #endif //__ISP__MODULE__CFG__H

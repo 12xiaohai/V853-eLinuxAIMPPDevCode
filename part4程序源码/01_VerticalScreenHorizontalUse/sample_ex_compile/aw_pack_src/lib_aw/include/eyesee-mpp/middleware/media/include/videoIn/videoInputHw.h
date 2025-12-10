@@ -18,10 +18,11 @@
 
 //#include <OsdGroups.h>
 #include <isp_comm.h>
+#include "mpi_isp.h"
 
 #define VI_CSI_NUM_MAX 3
 #define VI_ISP_NUM_MAX 5
-#define VI_VIPP_NUM_MAX 16
+#define VI_VIPP_NUM_MAX 16 //must == HW_VIDEO_DEVICE_NUM.
 #define VI_VIRCHN_NUM_MAX 4
 
 #define VI_HIGH_FRAMERATE_STANDARD (60)    //>60 is high frame rate.
@@ -111,9 +112,10 @@ typedef struct
     struct list_head mList;
 }VippFrame;
 typedef struct {
-	pthread_t threadid;
-	pthread_t threadid_gyro;
-	pthread_t threadid_videoPorcess;
+	//pthread_t threadid;
+	//pthread_t threadid_gyro;
+	//pthread_t threadid_videoPorcess;
+    char mThreadName[32];
 	VI_DEV  vipp_dev_id; /* vipp id num */
 	int	vipp_enable; /* 1:enable; 0:disable. default=0. */
     struct list_head mChnList;  //element type: VI_CHN_MAP_S
@@ -122,10 +124,12 @@ typedef struct {
     MPPCallbackFuncType mMppCallback;
     void *pAppData;
 
-    int mVippTimeoutCnt;
+    //int mVippTimeoutCnt;
+    int iDropFrameNum; //left frames to drop.
+    int64_t mLastGetFrameTm;    //unit:ms
 
 	int 	refs[32];
-    VIDEO_FRAME_INFO_S	VideoFrameInfo[32];
+    VIDEO_FRAME_INFO_S	VideoFrameInfo[32]; //store frame info from vipp.
     pthread_mutex_t mRefsLock;
 
     //for debug video frame occupy
@@ -162,6 +166,8 @@ typedef struct VIDevManager
     struct hw_isp_media_dev     *media;
     BOOL                        mSetFrequency; //TRUE:had set .  FALSE: ready to set.
     unsigned int                mClockFrequency; //
+    pthread_t mCapThreadId; //use select() to traverse all isp_video_device.
+    message_queue_t mCmdQueue;
 }VIDevManager;
 
 //extern struct hw_isp_media_dev *media;
@@ -198,10 +204,11 @@ ERRORTYPE videoInputHw_ChnDisable(int vipp_id); /*Disable /dev/video[0~3] node*/
 ERRORTYPE videoInputHw_GetIspDev(VI_DEV Vipp_id, ISP_DEV *pIspDev);
 ERRORTYPE videoInputHw_SetCrop(VI_DEV Vipp_id, const VI_CROP_CFG_S *pCropCfg);
 ERRORTYPE videoInputHw_GetCrop(VI_DEV Vipp_id, VI_CROP_CFG_S *pCropCfg);
+ERRORTYPE videoInputHw_SetSyncCtrl(VI_DEV Vipp_id, const struct csi_sync_ctrl *sync);
 //ERRORTYPE videoInputHw_SetOsdMaskRegion(int *pvipp_id, VI_OsdMaskRegion *pstOsdMaskRegion);
 //ERRORTYPE videoInputHw_UpdateOsdMaskRegion(int *pvipp_id, int onoff);
-ERRORTYPE videoInputHw_SetRegion(VI_DEV vipp_id, RGN_HANDLE RgnHandle, RGN_ATTR_S *pRgnAttr, const RGN_CHN_ATTR_S *pRgnChnAttr, BITMAP_S *pBmp);
-ERRORTYPE videoInputHw_DeleteRegion(VI_DEV vipp_id, RGN_HANDLE RgnHandle);
+ERRORTYPE videoInputHw_SetRegions(VI_DEV vipp_id, RgnChnAttachDetailPack *pPack);
+ERRORTYPE videoInputHw_DeleteRegions(VI_DEV vipp_id, RgnChnAttachDetailPack *pPack);
 ERRORTYPE videoInputHw_UpdateOverlayBitmap(VI_DEV vipp_id, RGN_HANDLE RgnHandle, BITMAP_S *pBitmap);
 ERRORTYPE videoInputHw_UpdateRegionChnAttr(VI_DEV ViDev, RGN_HANDLE RgnHandle, const RGN_CHN_ATTR_S *pRgnChnAttr);
 ERRORTYPE videoInputHw_RefsReduceAndRleaseData(int vipp_id, VIDEO_FRAME_INFO_S *pstFrameInfo);
@@ -215,8 +222,19 @@ ERRORTYPE videoInputHw_IspAe_SetISOSensitiveMode(int *pIspId, int mode);
 ERRORTYPE videoInputHw_IspAe_SetISOSensitive(int *pIspId, int value);
 ERRORTYPE videoInputHw_IspAe_SetMetering(int *pIspId, int value);
 ERRORTYPE videoInputHw_IspAe_SetGain(int *pIspId, int value);
+ERRORTYPE videoInputHw_IspAe_SetEvIdx(int *pIspId, int value);
+ERRORTYPE videoInputHw_IspAe_SetLock(int *pIspId, int value);
+ERRORTYPE videoInputHw_IspAe_SetTable(int *pIspId, struct ae_table_info *ae_table);
+ERRORTYPE videoInputHw_IspAe_RoiArea(int *pIspId, SIZE_S Res, RECT_S RoiRgn, AW_U16 ForceAeTarget, AW_U16 Enable);
+ERRORTYPE videoInputHw_IspAe_RoiMeteringArea(int *pIspId, SIZE_S Res, RECT_S RoiRgn);
+ERRORTYPE videoInputHw_IspAe_SetFaceAeCfg(int *pIspId, struct isp_face_ae_attr_info face_ae_info, SIZE_S Res);
+ERRORTYPE videoInputHw_IspAe_GetFaceAeCfg(int *pIspId, struct isp_face_ae_attr_info *face_ae_info);
+ERRORTYPE videoInputHw_Isp_ReadIspBin(int *pIspId, ISP_CFG_BIN_MODE ModeFlag, char *IspCfgBinPath);
+ERRORTYPE videoInputHw_Isp_SetAiIsp(int *pIspId, isp_ai_isp_info *ai_isp_info_entity);
+
 ERRORTYPE videoInputHw_IspAwb_SetMode(int *pIspId, int value);
 ERRORTYPE videoInputHw_IspAwb_SetColorTemp(int *pIspId, int value);
+ERRORTYPE videoInputHw_IspAwb_SetStatsSyncMode(int *pIspId, ISP_AWB_STATS_MODE IspAwbStatsMode);
 ERRORTYPE videoInputHw_Isp_SetFlicker(int *pIspId, int value);
 ERRORTYPE videoInputHw_Isp_SetMirror(int *pvipp_id, int value);
 ERRORTYPE videoInputHw_Isp_SetFlip(int *pvipp_id, int value);
@@ -226,11 +244,22 @@ ERRORTYPE videoInputHw_Isp_SetSaturation(int *pIspId, int value);
 ERRORTYPE videoInputHw_Isp_SetSharpness(int *pIspId, int value);
 ERRORTYPE videoInputHw_Isp_SetHue(int *pIspId, int value);
 ERRORTYPE videoInputHw_Isp_SetScene(int *pIspId, int value);
+ERRORTYPE videoInputHw_Isp_SetIrStatus(int *pIspId, ISP_CFG_MODE ModeFlag);
+ERRORTYPE videoInputHw_Isp_SetD3dLbcRatio(int *pIspId, unsigned int value);
+ERRORTYPE videoInputHw_Isp_SetStitchMode(int *pIspId, enum stitch_mode_t stitch_mode);
+ERRORTYPE videoInputHw_Isp_SetSensorFps(int *pIspId, int value);
 //add by jaosn
 ERRORTYPE videoInputHw_IspAe_GetExposureLine(int *pIspId, int *pvalue);
 ERRORTYPE videoInputHw_IspAe_GetEvIdx(int *pIspId, int *value);
+ERRORTYPE videoInputHw_IspAe_GetMaxEvIdx(int *pIspId, int *value);
+ERRORTYPE videoInputHw_IspAe_GetAeLock(int *pIspId, int *value);
 ERRORTYPE videoInputHw_IspAe_GetISOLumIdx(int *pIspId, int *value);
+ERRORTYPE videoInputHw_IspAe_GetEvLv(int *pvipp_id, int *value);
+ERRORTYPE videoInputHw_IspAe_GetEvLvAdj(int *pvipp_id, int *value);
+ERRORTYPE videoInputHw_Isp_GetIrStatus(int *pvipp_id, int *value);
+ERRORTYPE videoInputHw_Isp_GetIrAwbGain(int *pvipp_id, int *rgain_ir, int *bgain_ir);
 ERRORTYPE videoInputHw_IspAwb_GetCurColorT(int *pIspId, int *value);
+ERRORTYPE videoInputHw_IspAe_GetWeightLum(int *pvipp_id, int *value);
 
 ERRORTYPE videoInputHw_IspAe_GetMode(int *pIspId, int *pvalue);
 ERRORTYPE videoInputHw_IspAe_GetExposureBias(int *pIspId, int *pvalue);
@@ -268,5 +297,7 @@ ERRORTYPE videoInputHw_Isp_Get3DNR(int *pIspId, int *value);
 ERRORTYPE videoInputHw_Isp_GetPltmNextStren(int *pIspId, int *value);
 ERRORTYPE videoInputHw_Isp_SetVe2IspParam(int *pIspId, struct enc_VencVe2IspParam *pVe2IspParam);
 ERRORTYPE videoInputHw_Isp_GetIsp2VeParam(int *pIspId, struct enc_VencIsp2VeParam *pIsp2VeParam);
+ERRORTYPE videoInputHw_Isp_SetSensorMipiSwitch(int *pIspId, struct sensor_mipi_switch_entity *switch_entity);
+ERRORTYPE videoInputHw_Isp_GetSensorMipiSwitch(int *pIspId, struct sensor_mipi_switch_entity *switch_entity);
 
 #endif

@@ -629,7 +629,8 @@ public:
      */
     status_t setDataSource(int fd, int64_t offset, int64_t length);
 
-
+    status_t setVps(float fVps);
+    float getVps();
     status_t setVdecInputBufferSize(unsigned int nBufferSize);
     unsigned int getVdecInputBufferSize() const ;
 
@@ -785,6 +786,7 @@ public:
      * {@link AudioManager#setStreamVolume(int, int, int)} which sets the volume of ALL streams of
      * a particular type. Note that the passed volume values are raw scalars.
      * UI controls should be scaled logarithmically.
+     * must be called after prepare().
      *
      * @param leftVolume left volume scalar, [0, 1.0]
      * @param rightVolume right volume scalar, [0, 1.0]
@@ -1551,7 +1553,7 @@ private:
         PLAYER_COMMAND_SEEK = 0x100,
         PLAYER_COMMAND_STOP,
     };
-
+    float mfVps; //variable play speed. scope:[0.5, 4]
     unsigned int mVdecInputBufferSize;
 
     //MPP components

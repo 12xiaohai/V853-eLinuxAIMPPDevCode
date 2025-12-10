@@ -17,12 +17,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <alsa_interface.h>
 #include <mm_comm_aio.h>
 
 
 typedef struct PcmBufferManager
 {
-    struct list_head mFreeFrmList;
+    struct list_head mFreeFrmList; //AudioFrameInfo
     struct list_head mValidFrmList;
     struct list_head mUsingFrmList;
     struct list_head mFillingFrmList;
@@ -31,9 +32,14 @@ typedef struct PcmBufferManager
     pthread_mutex_t mUsingFrmListLock;
     pthread_mutex_t mFillingFrmListLock;
     int mFrameNodeNum;
-    int mFrameSize; //bytes per audio pcm frame
+    int mFrameSize; //bytes per audio pcm frame, maybe include aec channel
+    int mCaptureFrameSize; //bytes, audiocodec pcm frame, exclude aec channel.
+    int mAecFrameSize; //bytes, daudio0 pcm frame, i.d. aec channel
+    int mnChnCnt;
+    int mnAecChnCnt;
+    int mSampleBitWidth;
 
-    AUDIO_FRAME_S* (*getValidFrame)(struct PcmBufferManager *pMgr);
+    AUDIO_FRAME_S* (*getValidFrame)(struct PcmBufferManager *pMgr, AEC_FRAME_S *pAecFrame);
     void (*releaseFrame)(struct PcmBufferManager *pMgr, AUDIO_FRAME_S *pFrame);
     AUDIO_FRAME_S* (*getFreeFrame)(struct PcmBufferManager *pMgr);
     void (*pushFrame)(struct PcmBufferManager *pMgr, AUDIO_FRAME_S *pFrame);
@@ -45,7 +51,7 @@ typedef struct PcmBufferManager
     int (*usingFrmCnt)(struct PcmBufferManager *pMgr);
 } PcmBufferManager;
 
-PcmBufferManager *pcmBufMgrCreate(int frmNum, int frmSize);
+PcmBufferManager *pcmBufMgrCreate(int frmNum, PCM_CONFIG_S *pPcmConfig, AIO_ATTR_S *pAioAttr);
 void pcmBufMgrDestroy(PcmBufferManager *pMgr);
 
 #endif /* __PCM_BUFFER_MANAGER_H__ */

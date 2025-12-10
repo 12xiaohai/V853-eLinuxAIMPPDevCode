@@ -19,8 +19,6 @@
 
 #include "mm_common.h"
 
-#include <agc_m.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -86,6 +84,9 @@ typedef enum AIO_SOUND_MODE_E
 {
     AUDIO_SOUND_MODE_MONO   =0,/*mono*/
     AUDIO_SOUND_MODE_STEREO =1,/*stereo*/
+
+    AUDIO_SOUND_MODE_AW_1Chn1Ref = 100, //1 common channel and 1 ref channel used to aec.
+    AUDIO_SOUND_MODE_AW_2Chn1Ref = 101, //2 common channels and 1 ref channel used to aec.
     AUDIO_SOUND_MODE_BUTT
 } AUDIO_SOUND_MODE_E;
 
@@ -136,6 +137,7 @@ typedef enum PCM_CARD_TYPE_E
 {
     PCM_CARD_TYPE_AUDIOCODEC = 0,    /* IC internal codec */
     PCM_CARD_TYPE_SNDHDMI = 1,    /* hdmi audio */
+    PCM_CARD_TYPE_UAC1 = 2,
     PCM_CARD_TYPE_BUTT,
 } PCM_CARD_TYPE_E;
 
@@ -152,28 +154,74 @@ typedef enum PCM_CARD_TYPE_E
 //	float fEnergy_Level;		// used internally
 //
 //}AO_AGC_CONFIG_S;
+
+//typedef struct AI_AGC_FLOAT_CONFIG_S
+//{
+//    int   iSampleRate;
+//    int	  iChannel;   		/* Support stereo and mono */
+//    int   iSampleLen; 		/* sample number processed */
+//    int   iBytePerSample;   /* bps: 2,- short */
+//    float fTargetDb;        /* range: [-30,0] */
+//    float fMaxGainDb;       /* range: [0,30] */
+//}AI_AGC_FLOAT_CONFIG_S;
+
+typedef struct AGC_FLOAT_CONFIG_S
+{
+    float fTargetDb;        /* range: [-30,0] */
+    float fMaxGainDb;       /* range: [0,30] */
+}AGC_FLOAT_CONFIG_S;
+
 typedef struct AIO_ATTR_S
 {
-    AUDIO_SAMPLE_RATE_E enSamplerate;   /* sample rate */
-    AUDIO_BIT_WIDTH_E   enBitwidth;     /* bitwidth */
+    AUDIO_SAMPLE_RATE_E enSamplerate;   /**< sample rate */
+    AUDIO_BIT_WIDTH_E   enBitwidth;     /**< bitwidth */
     AIO_MODE_E          enWorkmode;     /* master or slave mode */
-    AUDIO_SOUND_MODE_E  enSoundmode;    /* momo or steror */
+    AUDIO_SOUND_MODE_E  enSoundmode;    /**< mono or stereo. used by ai&ao, it is dst output attr of mpi_ai, input attr of mpi_ao */
     unsigned int        u32EXFlag;      /* expand 8bit to 16bit,use AI_EXPAND(only valid for AI 8bit) */
     unsigned int        u32FrmNum;      /* frame num in buf[2,MAX_AUDIO_FRAME_NUM] */
-    unsigned int        mPtNumPerFrm; /* point num per frame (80/160/240/320/480/1024/2048)
-                                                (ADPCM IMA should add 1 point, AMR only support 160) */
-    unsigned int        u32ChnCnt;      /* channle number on FS, valid value:1/2/4/8 */
+    /**
+      point num per frame (80/160/240/320/480/1024/2048), i.e. period_size,
+        (ADPCM IMA should add 1 point, AMR only support 160)
+        used by ai&ao. ai get. ao set.
+    */
+    unsigned int        mPtNumPerFrm;
+    /**
+      channle number on FS, valid value:1/2/4/8, used by ai&ao. In mpi_ai, mChnCnt only include MicInChn, not include refChn.
+      for mpi_ai, mChnCnt may not be equal to enSoundmode as aec might merge two mic's data to one channel. mChnCnt is
+      input attr of mpi_ai, enSoundmode is output attr of mpi_ai.
+      for mpi_ao, mChnCnt == enSoundmode.
+    */
+    unsigned int        mChnCnt;
     unsigned int        u32ClkSel;      /* 0: AI and AO clock is separate 
                                                  1: AI and AO clock is inseparate, AI use AO's clock */
-    PCM_CARD_TYPE_E     mPcmCardId;     /* audio card selection for play audio file */
-    int ai_aec_en;                                                 
-    int aec_delay_ms;  
+    PCM_CARD_TYPE_E     mPcmCardId;     /**< audio card selection for play audio file */
+    /**
+      mic number. mpi_aenc will generate capture pcm identifier according to number of microphone.
+      0: use default number, i.d. 1
+      used by mpi_ai.
+
+      One device of card can has many MICs. i.d. hw:0,0 can has many MICs. 
+      And in common, out hardware put many MICs in one audioCodec. So hw:0,0 owns all MICs.
+    */
+    int mMicNum;
+    int ai_aec_en;
+    int aec_delay_ms;
+    /**
+      0:process aec in audio_hw
+      1:not process aec in audio_hw,user call AW_MPI_AI_GetFrame() to get capture frame and aec frame.
+
+      when bypassAec is set to true, we will transport pcm got from alsa-multi-plugin directly, channel count will +1.
+      only used for non-tunnel mode of ai-component output port,
+      i.d. ERRORTYPE AW_MPI_AI_GetFrame(AUDIO_DEV AudioDevId, AI_CHN AiChn, AUDIO_FRAME_S *pstFrm, AEC_FRAME_S *pstAecFrm, int s32MilliSec);
+    */
+    int mbBypassAec;
 
     int ai_ans_en;
     int ai_ans_mode;    /* four modes will be supported by ans,the value is 0 1 2 3,the greater te value is,the better of the noise suppression,and more side-effect.*/
 
-	int ai_agc_en;		// enable or disable agc process in audio input module
-    my_agc_handle ai_agc_cfg;
+    int ai_agc_en;            // enable or disable agc process in audio input module
+    //my_agc_handle ai_agc_cfg;
+    AGC_FLOAT_CONFIG_S ai_agc_float_cfg;
 } AIO_ATTR_S;
 
 typedef struct AI_CHN_PARAM_S
@@ -183,9 +231,9 @@ typedef struct AI_CHN_PARAM_S
 
 typedef struct AUDIO_FRAME_S
 {
-    AUDIO_SAMPLE_RATE_E mSamplerate;   /* sample rate, extended */
+    AUDIO_SAMPLE_RATE_E mSamplerate;   /* sample rate, extended for ai&ao*/
     AUDIO_BIT_WIDTH_E   mBitwidth;     /*audio frame bitwidth*/
-    AUDIO_SOUND_MODE_E  mSoundmode;    /*audio frame momo or stereo mode*/
+    AUDIO_SOUND_MODE_E  mSoundmode;    /*audio frame momo or stereo mode, used by ai&ao,adec*/
     void                *mpAddr;
     unsigned long long  mTimeStamp;                /*audio frame timestamp, unit:us*/
     unsigned int        mSeq;                      /*audio frame seq*/
@@ -215,7 +263,9 @@ typedef struct AUDIO_FRAME_INFO_S
 typedef struct AUDIO_STREAM_S
 { 
     unsigned char       *pStream;       /* the virtual address of stream */
+    unsigned char       *pStreamExtra;
     unsigned int        mLen;           /* stream lenth, by bytes */
+    unsigned int        mExtraLen;
     unsigned long long  mTimeStamp;     /* frame time stamp */
     int                 mId;            /* frame id */
 } AUDIO_STREAM_S;
@@ -612,6 +662,64 @@ typedef enum EN_AIO_ERR_CODE_E
 
 } EN_ADEC_ERR_CODE_E;
 
+
+typedef struct UvoiceLicenseParam
+{
+    char license[128];
+    char license_path[128];
+    char uuid[128];
+} UvoiceLicenseParam;
+
+typedef struct UvoiceServerHandshake
+{
+    const char *pPostBody;
+    char response[1024];
+} UvoiceServerHandshake;
+
+typedef enum AudioDevEventType
+{
+    /**
+      if we want to use uvoice aec lib, we need get license, to get license, we need to know license code, uuid, filePath.
+      pEventData = UvoiceLicenseParam.
+    */
+    AudioDevEvent_GetUvoiceLicenseParam = 0,
+    /**
+      use curl to post bodyMessage to uvoice server, get server response string.
+      pEventData = UvoiceServerHandshake
+    */
+    AudioDevEvent_GetUvoiceServerResponse,
+
+    AudioDevEvent_Max = 0x7FFFFFFF
+} AudioDevEventType;
+
+typedef ERRORTYPE (*AudioDevCallbackFuncType)(void *cookie, AUDIO_DEV nAudioDevId, AudioDevEventType eEventType, int nPara0, void *pEventData);
+
+/**
+  aec process callback.
+
+  @return
+    0: valid frame is ready
+    1: valid frame is not ready, process is successful.
+    -1:valid frame is not ready, process is failure.
+*/
+typedef int (*AecProcessFuncType)(void *cookie, AUDIO_FRAME_S *pFrm, BOOL bSuspendAec);
+
+/**
+  ans process callback.
+
+  @param bSuspendAns
+    if suspend ans, copy data directly.
+  @return
+    0: valid frame is ready
+    1: valid frame is not ready, process is successful.
+    -1:valid frame is not ready, process is failure.
+*/
+typedef int (*AnsProcessFuncType)(void *cookie, AUDIO_FRAME_S *pFrm, const AIO_ATTR_S *pAttr, BOOL bSuspendAns);
+
+typedef struct AI_CHN_ATTR_S
+{
+    int nFrameSize; //unit:samples in one channel. 0:use default value, i.e. 1024.
+} AI_CHN_ATTR_S;
 
 /* invlalid device ID */
 #define ERR_AI_INVALID_DEVID     DEF_ERR(MOD_ID_AI, EN_ERR_LEVEL_ERROR, EN_ERR_INVALID_DEVID)

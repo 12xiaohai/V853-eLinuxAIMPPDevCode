@@ -601,10 +601,12 @@ static inline void hlist_add_fake(struct hlist_node *n) { n->pprev = &n->next; }
  * Move a list from one list head to another. Fixup the pprev
  * reference of the first entry if it exists.
  */
-static inline void hlist_move_list(struct hlist_entry *old, struct hlist_entry *new)
+static inline void hlist_move_list(struct hlist_entry *old, struct hlist_entry *new_node)
 {
-    new->first = old->first;
-    if (new->first) new->first->pprev = &new->first;
+    new_node->first = old->first;
+    if (new_node->first) {
+        new_node->first->pprev = &new_node->first;
+    }
     old->first = NULL;
 }
 

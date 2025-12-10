@@ -39,21 +39,6 @@ typedef enum {
     RecordFileDurationPolicy_AccurateDuration,          //immediately finish current file. not guarantee next frame is I frame.
 }RecordFileDurationPolicy;
 
-typedef struct CdxOutputSinkInfo
-{
-    int                 mMuxerId;
-    int                 mMuxerGrpId;
-    MUXERMODES          nMuxerMode;
-    int                 nOutputFd;
-    //char                *mPath;
-    int                 nFallocateLen;
-    int                 nCallbackOutFlag;
-    BOOL                bBufFromCacheFlag;
-    struct list_head    mList;
-    int add_repair_info;
-    int mMaxFrmsTagInterval;    //unit:us, for mp4 repair.
-}CdxOutputSinkInfo;
-
 #ifdef __cplusplus
 }
 #endif

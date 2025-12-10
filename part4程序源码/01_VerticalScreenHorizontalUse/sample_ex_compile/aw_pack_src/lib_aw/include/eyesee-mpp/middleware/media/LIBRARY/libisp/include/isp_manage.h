@@ -46,11 +46,8 @@
 extern unsigned int isp_lib_log_param;
 
 extern HW_U8 ldci_video_sel;
-extern void *ldci_frame_buf_addr;
-// =========================
-/* ldci_video option */
-#define LDCI_VIDEO_IN 0
-#define TUNINGAPP_VIDEO_IN 1
+extern HW_U16 ldci_external_width;
+extern HW_U16 ldci_external_height;
 
 #define ISP_AE_ROW	18
 #define ISP_AE_COL	24
@@ -85,6 +82,24 @@ extern void *ldci_frame_buf_addr;
 
 #define ISP_AF_START_FRAME_NUM 3
 #define ISP_AWB_START_FRAME_NUM 3
+
+#define FRAME_ID_1 1
+#define ISP_WIN_MODE_MATRIX 0
+#define MIPI_SWITCH_FRAME_CROP_WIN 0
+#define MIPI_SWITCH_FRAME_DO_SWITCH 2
+#define MIPI_SWITCH_FRAME_SET_OFFSET 4
+#define MIPI_SWITCH_AWB_RG_MIN 9500
+#define MIPI_SWITCH_AWB_RG_MAX 10500
+#define MIPI_SWITCH_AWB_BG_MIN 9500
+#define MIPI_SWITCH_AWB_BG_MAX 10500
+#define MIPI_SWITCH_AE_COMP_OFFSET 2000
+#define MIPI_SWITCH_AWB_COMP_UPDATE 1
+#define MIPI_SWITCH_AWB_COMP_RESET 0
+#define MIPI_SWITCH_AWB_STATS_DIFF 30
+#define MIPI_SWITCH_AWB_VAILD_BLOCK_THRD 10
+#define MIPI_SWITCH_AWB_OFFSET_MIN 9000
+#define MIPI_SWITCH_AWB_OFFSET_MAX 11000
+#define MIPI_SWITCH_DEFAULT_PRECISION 10000
 
 enum colorfx {
 	ISP_COLORFX_NONE = 0,
@@ -125,8 +140,14 @@ struct isp_awb_stats_s {
 	HW_U32 awb_avg_r[ISP_AWB_ROW][ISP_AWB_COL];	/*range 0~2048*/
 	HW_U32 awb_avg_g[ISP_AWB_ROW][ISP_AWB_COL];
 	HW_U32 awb_avg_b[ISP_AWB_ROW][ISP_AWB_COL];
-
 	HW_U32 avg[ISP_AWB_ROW][ISP_AWB_COL];
+
+#if ISP_LIB_USE_ROLLOFF
+	/*alsc stats*/
+	HW_U32 awb_deal_r[ISP_AWB_ROW][ISP_AWB_COL];/*range 0~2048*/
+	HW_U32 awb_deal_g[ISP_AWB_ROW][ISP_AWB_COL];
+	HW_U32 awb_deal_b[ISP_AWB_ROW][ISP_AWB_COL];
+#endif
 };
 
 struct isp_af_stats_s {
@@ -166,7 +187,7 @@ struct isp_gtm_stats_s {
 };
 
 struct isp_pltm_stats_s {
-	HW_U64 *pltm_buf;
+	HW_U16 stage_lum[5][ISP_PLTM_ROW*ISP_PLTM_COL];
 };
 
 struct isp_d3d_k_stats_s {
@@ -356,6 +377,22 @@ struct isp_data_bitwidth {
 	HW_U8 st_csc;
 };
 
+struct sensor_mipi_switch_entity_info {
+	struct sensor_mipi_switch_entity mipi_switch_info;
+	HW_U32 mipi_switch_enable;
+	HW_U32 frame_cnt;
+	HW_S32 orign_rgain_favor;
+	HW_S32 orign_bgain_favor;
+	HW_U32 rgain_comp_last;
+	HW_U32 bgain_comp_last;
+	HW_U32 rgain_comp;
+	HW_U32 bgain_comp;
+	HW_U16 vaild_block_sum;
+	struct isp_awb_stats_s *sensorA_awb_stats;
+	struct isp_awb_stats_s *sensorB_awb_stats;
+	struct isp_video_device *mipi_switch_video;
+};
+
 /*
  *
  *   struct isp_lib_context - Stores the isp settings
@@ -379,6 +416,9 @@ struct isp_lib_context {
 
 	/* Auto White balance settings */
 	isp_awb_setting_t awb_settings;
+
+	/* Auto lens shading correct settings */
+	isp_rolloff_setting_t alsc_settings;
 
 	isp_tune_setting_t tune;
 	isp_adjust_setting_t adjust;
@@ -415,14 +455,14 @@ struct isp_lib_context {
 	isp_awb_entity_context_t awb_entity_ctx;
 	//AE Ctx
 	isp_ae_entity_context_t ae_entity_ctx;
+	//ALSC Ctx
+	isp_rolloff_entity_context_t rolloff_entity_ctx;
 	//GTM Ctx
 	isp_gtm_entity_context_t gtm_entity_ctx;
 	//PLTM Ctx
 	isp_pltm_entity_context_t pltm_entity_ctx;
 	//ISO Ctx
 	isp_iso_entity_context_t iso_entity_ctx;
-	//ISO Rolloff
-	isp_rolloff_entity_context_t rolloff_entity_ctx;
 
 	const struct isp_ctx_operations *ops;
 	pthread_mutex_t ctx_lock;
@@ -444,12 +484,17 @@ struct isp_lib_context {
 	struct enc_VencVe2IspParam VencVe2IspParam;
 	struct npu_face_nr_config npu_nr_cfg;
 	struct sensor_temp_info temp_info;
+	struct sensor_flip_info flip_info;
 #ifdef USE_ENCPP
 	struct encpp_static_sharp_config encpp_static_sharp_cfg;
 #endif
 	HW_S32 rgain_ir;
 	HW_S32 bgain_ir;
 	struct isp_debug_info debug_param_info;
+	struct sensor_mipi_switch_entity_info switch_info;
+	HW_U8 isp_ir_flag_last;
+	HW_U8 stitch_mode;
+	HW_U8 ai_isp_en;
 };
 
 /*
@@ -478,12 +523,15 @@ enum e3a_settings_flags {
  *  ISP Module API
  */
 struct isp_ctx_operations {
-	void (*ae_done)(struct isp_lib_context *isp, ae_result_t *result);
-	void (*af_done)(struct isp_lib_context *isp, af_result_t *result);
-	void (*awb_done)(struct isp_lib_context *isp, awb_result_t *result);
-	void (*afs_done)(struct isp_lib_context *isp, afs_result_t *result);
-	void (*md_done)(struct isp_lib_context *isp, md_result_t *result);
-	void (*pltm_done)(struct isp_lib_context *isp, pltm_result_t *result);
+	int (*ae_done)(struct isp_lib_context *isp, ae_result_t *result);
+	int (*af_done)(struct isp_lib_context *isp, af_result_t *result);
+	int (*awb_done)(struct isp_lib_context *isp, awb_result_t *result);
+	int (*afs_done)(struct isp_lib_context *isp, afs_result_t *result);
+	int (*md_done)(struct isp_lib_context *isp, md_result_t *result);
+	int (*pltm_done)(struct isp_lib_context *isp, pltm_result_t *result);
+	int (*gtm_done)(struct isp_lib_context *isp, gtm_result_t *result);
+
+	int (*awb_limit)(struct isp_lib_context *isp, awb_result_t *result);
 };
 
 /* for external api*/
@@ -510,6 +558,23 @@ typedef struct __isp_3a_info_awb {
 	HW_U16 b_gain;
 }isp_3a_info_awb;
 
+typedef struct __isp_cfg_info {
+	HW_U16 mode_flag;
+	char isp_cfg_bin_path[100];
+}isp_cfg_info;
+
+typedef struct __isp_awb_stats_info {
+	HW_U32 r_stats_avg;
+	HW_U32 g_stats_avg;
+	HW_U32 b_stats_avg;
+	HW_U32 r_gain;
+	HW_U32 b_gain;
+}isp_awb_stats_info;
+
+typedef struct __isp_ai_isp_info {
+	HW_U8 ai_isp_en;
+}isp_ai_isp_info;
+
 void isp_rolloff_set_params_helper(isp_rolloff_entity_context_t *isp_rolloff_cxt, rolloff_param_type_t cmd_type);
 void isp_afs_set_params_helper(isp_afs_entity_context_t *isp_afs_cxt, afs_param_type_t cmd_type);
 void isp_iso_set_params_helper(isp_iso_entity_context_t *isp_iso_cxt, iso_param_type_t cmd_type);
@@ -530,7 +595,8 @@ HW_S32 isp_ctx_config_exit(struct isp_lib_context *isp_gen);
 HW_S32 isp_ctx_update_ae_tbl(struct isp_lib_context *isp_gen, int sensor_fps);
 HW_S32 isp_ctx_config_update(struct isp_lib_context *isp_gen);
 HW_S32 isp_ctx_config_reset(struct isp_lib_context *isp_gen);
-HW_S32 isp_ctx_algo_run(struct isp_lib_context *isp_gen);
+HW_S32 isp_ctx_front_algo_run(struct isp_lib_context *isp_gen);
+HW_S32 isp_ctx_rear_algo_run(struct isp_lib_context *isp_gen);
 
 int isp_stat_save_init(struct isp_lib_context *ctx);
 void isp_stat_save_exit(struct isp_lib_context *ctx);

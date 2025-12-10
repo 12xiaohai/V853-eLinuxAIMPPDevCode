@@ -30,11 +30,8 @@ ERRORTYPE VENC_Construct(void);
 ERRORTYPE VENC_Destruct(void);
 MM_COMPONENTTYPE* VENC_GetChnComp(MPP_CHN_S *pMppChn);
 
-/**
- * Store region. If region is available to show, draw region immediately.
- */
-ERRORTYPE AW_MPI_VENC_SetRegion(VENC_CHN VeChn, RGN_HANDLE RgnHandle, RGN_ATTR_S *pRgnAttr, const RGN_CHN_ATTR_S *pRgnChnAttr, BITMAP_S *pBmp);
-ERRORTYPE AW_MPI_VENC_DeleteRegion(VENC_CHN VeChn, RGN_HANDLE RgnHandle);
+ERRORTYPE AW_MPI_VENC_SetRegions(VENC_CHN VeChn, RgnChnAttachDetailPack *pPack);
+ERRORTYPE AW_MPI_VENC_DeleteRegions(VENC_CHN VeChn, RgnChnAttachDetailPack *pPack);
 /**
  * update immediately on next frame
  */

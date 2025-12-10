@@ -26,6 +26,8 @@
 #define ISP_MAX_AWB_AVG_SPEC	(1<<24)
 #define ISP_AWB_GRAY_CNT_SHIFT	6
 
+#define ISP_LIB_USE_AI_AWB 		0
+
 enum white_balance_mode {
 	WB_MANUAL        = 0,
 	WB_AUTO          = 1,
@@ -40,12 +42,36 @@ enum white_balance_mode {
 	WB_TUNGSTEN      = 10,
 };
 
+enum wb_stat_combine {
+	WB_STAT_NONE            = 0,
+	WB_STAT_ROW_COMBINE     = 1,
+	WB_STAT_COL_COMBINE     = 2,
+	WB_STAT_ROW_COL_COMBINE = 3,
+};
+
+enum AwbLightClass {
+	AWB_LIGHT_CLASS_AH = 0,
+	AWB_LIGHT_CLASS_FLUO,
+	AWB_LIGHT_CLASS_DAY,
+	AWB_LIGHT_CLASS_AH2FLUO,
+	AWB_LIGHT_CLASS_FLUO2DAY,
+
+	AWB_LIGHT_CLASS_GREENZONE,
+	AWB_LIGHT_CLASS_SHADOW,
+	AWB_LIGHT_CLASS_BLUESKY,
+	AWB_LIGHT_CLASS_FLASH,
+
+	AWB_LIGHT_CLASS_OUTLIER,
+	AWB_LIGHT_CLASS_MAX,
+};
+
 typedef struct isp_awb_setting {
 	enum white_balance_mode wb_mode;
 	HW_S32 wb_temperature;
 	bool white_balance_lock;
 	struct isp_wb_gain wb_gain_manual;
 	struct isp_h3a_coor_win awb_coor;
+	enum wb_stat_combine wb_stat_combine_mode;
 } isp_awb_setting_t;
 
 
@@ -63,10 +89,10 @@ typedef struct isp_awb_ini_cfg {
 	HW_S32 awb_ext_light_num;
 	HW_S32 awb_skin_color_num;
 	HW_S32 awb_special_color_num;
-	HW_S32 awb_light_info[320];
-	HW_S32 awb_ext_light_info[320];
-	HW_S32 awb_skin_color_info[160];
-	HW_S32 awb_special_color_info[320];
+	HW_S32 awb_light_info[160];
+	HW_S32 awb_ext_light_info[80];
+	HW_S32 awb_skin_color_info[40];
+	HW_S32 awb_special_color_info[80];
 	HW_S32 awb_preset_gain[22];
 	HW_S32 awb_rgain_favor;
 	HW_S32 awb_bgain_favor;
@@ -102,6 +128,13 @@ typedef struct isp_awb_stats {
 typedef struct isp_awb_result {
 	struct isp_wb_gain wb_gain_output;
 	HW_S32 color_temp_output;
+	HW_U16 color_temp_target;
+	HW_U16 color_temp_min;
+	HW_U16 color_temp_max;
+	HW_U16 color_temp_var;
+	HW_U16 LightWinNum[AWB_LIGHT_CLASS_MAX];
+	HW_U16 LightTempMean[AWB_LIGHT_CLASS_MAX];
+	bool WinValidTag[768];
 } awb_result_t;
 
 typedef struct isp_awb_core_ops {

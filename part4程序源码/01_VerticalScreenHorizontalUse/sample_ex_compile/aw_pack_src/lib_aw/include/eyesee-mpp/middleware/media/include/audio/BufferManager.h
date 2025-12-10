@@ -16,24 +16,76 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <mm_comm_aio.h>
 
-typedef struct BufferManager {
+typedef struct PCMDataNode
+{
+    char *pData;
+    int nDataLen; //unit:bytes
+    char *pDataExtra;
+    int nDataExtraLen;
+    int64_t nPts; //unit:us
+    struct list_head mList;
+}PCMDataNode;
+
+typedef struct PCMBufferManager
+{
     char *mpStart;
     char *mpRead;
     char *mpWrite;
-    size_t mTotalSize;
-    size_t mDataSize;
-    size_t mFreeSize;
+    char *mpPrefetch;
+    int mTotalSize;
+    int mDataSize; //all valid data size
+    int mPrefetchSize;   //size of data which is got.
+    int mFreeSize;
     pthread_mutex_t mLock;
 
-    ssize_t (*writeData)(struct BufferManager *pMgr, char *pInBuf, size_t inSize);
-    ssize_t (*readData)(struct BufferManager *pMgr, char *pOutBuf, size_t reqSize);
-    size_t (*getFreeSize)(struct BufferManager *pMgr);
-} BufferManager;
+    int mAlsaFrameBytes;
+    int mSampleRate;
+    int mFrameBytes;
 
-BufferManager *bufferMgr_Create(size_t size);
-void bufferMgr_Destroy(BufferManager *pMgr);
+    /**
+      PCMDataNode is used to store input frame pts and store_position in buffer, help to caculate pts of pcm data in
+      arbitrary position in buffer.
+      output frame is independent of input frame.
+    */
+    struct list_head mIdlePCMDataList; //PCMDataNode
+    struct list_head mValidPCMDataList;
+    int mNodeNum;
+
+    /**
+      @return
+        0: success
+        -1: fail
+    */
+    int (*writeData)(struct PCMBufferManager *pMgr, char *pInBuf, int inSize, int64_t nPts, bool bMute);
+    /**
+      @return
+        0: success
+        -1: fail
+    */
+    int (*getData)(struct PCMBufferManager *pMgr, int reqSize, char **ppOutBuf, int *pSize, char **ppOutBufExtra, int *pSizeExtra, int64_t *pPts);
+    /**
+      @return
+        0: success
+        -1: fail
+    */
+    int (*releaseData)(struct PCMBufferManager *pMgr, char *pOutBuf, int relSize);
+    /**
+      @return
+        free size, unit: bytes
+    */
+    int (*getFreeSize)(struct PCMBufferManager *pMgr);
+    /**
+      @return
+        prefetch size, unit: bytes
+    */
+    int (*getPrefetchSize)(struct PCMBufferManager *pMgr);
+} PCMBufferManager;
+
+PCMBufferManager *PCMBufferMgr_Create(int nFrmNum, int nFrameBytes, int nAlsaFrameBytes, int nSampleRate);
+void PCMBufferMgr_Destroy(PCMBufferManager *pMgr);
 
 #endif /* __BUFFER_MANAGER_H__ */

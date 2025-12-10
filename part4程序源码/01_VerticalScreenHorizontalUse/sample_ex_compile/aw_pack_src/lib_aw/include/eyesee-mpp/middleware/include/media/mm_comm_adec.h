@@ -74,6 +74,8 @@ typedef struct ADEC_CHN_ATTR_S
     int attachAACHeader; // attach header for every frame, effect only when audio codec is AAC
     //int g726_src_enc_type;  // added for g726 source 1:a-law;0:u-law
     //int g726_src_bit_rate;
+    int mInBufSize;
+    int mOutBufSize;
 }ADEC_CHN_ATTR_S;
 
 

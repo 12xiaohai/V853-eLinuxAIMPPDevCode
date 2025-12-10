@@ -30,6 +30,8 @@ ERRORTYPE AW_MPI_RGN_SetBitMap(RGN_HANDLE Handle, const BITMAP_S *pstBitmap);
 
 ERRORTYPE AW_MPI_RGN_AttachToChn(RGN_HANDLE Handle, const MPP_CHN_S *pstChn, const RGN_CHN_ATTR_S *pstChnAttr);
 ERRORTYPE AW_MPI_RGN_DetachFromChn(RGN_HANDLE Handle, const MPP_CHN_S *pstChn);
+ERRORTYPE AW_MPI_RGN_PackAttachToChn(RgnChnAttachPack *pstAttachPack, const MPP_CHN_S *pstChn);
+ERRORTYPE AW_MPI_RGN_PackDetachFromChn(RgnChnAttachPack *pstDetachPack, const MPP_CHN_S *pstChn);
 
 ERRORTYPE AW_MPI_RGN_SetDisplayAttr(RGN_HANDLE Handle, const MPP_CHN_S *pstChn, const RGN_CHN_ATTR_S *pstChnAttr);
 ERRORTYPE AW_MPI_RGN_GetDisplayAttr(RGN_HANDLE Handle, const MPP_CHN_S *pstChn, RGN_CHN_ATTR_S *pstChnAttr);

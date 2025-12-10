@@ -44,7 +44,7 @@ typedef enum CEDARX_STREAMTYPE{
 }CEDARX_STREAMTYPE;
 typedef enum CEDARX_SOURCETYPE{
     CEDARX_SOURCE_FD,
-    CEDARX_SOURCE_FILEPATH,
+    CEDARX_SOURCE_FILEPATH, //include URL, file path need add prefix "scheme://", e.g., file:///mnt/sdcard/test.mp4
     CEDARX_SOURCE_INPUT_STREAM, //for input stream what we design private, use extend function interface to set.
     CEDARX_SOURCE_WRITER_CALLBACK = 6, //for recoder writer
 }CEDARX_SOURCETYPE;
@@ -159,6 +159,7 @@ extern void destroy_outstream_handle(struct cdx_stream_info *stm_info);
 
 extern int stream_remove_file(char* fileName);
 extern int stream_mkdir(char *dirName, int mode);
+char *generateFilepathFromFd(const int fd);
 
 static inline int cdx_seek(struct cdx_stream_info *stream, cdx_off_t offset, int whence)
 {

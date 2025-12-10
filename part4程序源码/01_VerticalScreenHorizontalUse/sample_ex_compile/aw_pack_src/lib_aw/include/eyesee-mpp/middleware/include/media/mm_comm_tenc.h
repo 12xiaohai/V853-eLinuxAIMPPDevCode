@@ -52,7 +52,9 @@ extern "C"{
 typedef struct TEXT_STREAM_S
 { 
     unsigned char       *pStream;       /* the virtual address of stream */
+    unsigned char       *pStreamExtra;
     unsigned int        mLen;           /* stream lenth, by bytes */
+    unsigned int        mExtraLen;
     unsigned long long  mTimeStamp;     /* frame time stamp */
     int                 mId;            /* frame id */
 } TEXT_STREAM_S;
@@ -60,8 +62,8 @@ typedef struct TEXT_STREAM_S
 typedef struct TEXT_FRAME_S
 {
     char                mpAddr[200];
-    unsigned long long  mTimeStamp;                
-    unsigned int        mLen;                      
+    unsigned long long  mTimeStamp; //unit:us
+    unsigned int        mLen;
     unsigned int        mId;
 } TEXT_FRAME_S;
 

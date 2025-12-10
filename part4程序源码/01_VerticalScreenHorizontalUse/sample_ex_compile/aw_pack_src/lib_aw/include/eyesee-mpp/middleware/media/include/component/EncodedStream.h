@@ -29,6 +29,8 @@ extern "C" {
 #define CEDARV_FLAG_LAST_PART           0x00000010
 #define CEDARV_FLAG_THUMB               0x00000020  //indicate EncodedStream has thumb picture, only used for jpeg.
 
+#define ENCODED_FRAME_ID_INVALID (0xFFFF9000)
+
 typedef enum CDX_PACKETTYPE
 {
     CDX_PacketUnkown = 0,
@@ -66,7 +68,7 @@ typedef struct encoder_node_t
 {
     EncodedStream stEncodedStream;
     int mUsedRefCnt;  // mux component use it to record used ref count.
-    int mPortIndex;
+    int mPortIndex; ////streamId = portIndex = suffix of RecSink's stream array. portIndex can match to veChn.
     struct list_head mList;
 }ENCODER_NODE_T;
 

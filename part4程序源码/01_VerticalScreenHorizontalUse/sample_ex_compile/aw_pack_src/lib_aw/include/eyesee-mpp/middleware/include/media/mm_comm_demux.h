@@ -23,14 +23,18 @@ extern "C"{
 #endif /* End of #ifdef __cplusplus */
 
 // ref to cedarx_stream.h
-typedef enum STREAMTYPE_E{
-    STREAMTYPE_NETWORK,
-    STREAMTYPE_LOCALFILE,
-}STREAMTYPE_E;
+//typedef enum STREAMTYPE_E{
+//    STREAMTYPE_NETWORK,
+//    STREAMTYPE_LOCALFILE,
+//}STREAMTYPE_E;
 
+/**
+  URL: "http://downsc.chinaz.net/files/download/sound1/201206/1638.mp3".
+    if file path, also need add prefix "scheme://", e.g., "file:///mnt/sdcard/test.mp4"
+*/
 typedef enum SOURCETYPE_E{
     SOURCETYPE_FD,
-    SOURCETYPE_FILEPATH,
+    SOURCETYPE_URL,
     SOURCETYPE_WRITER_CALLBACK = 6, //for recoder writer
 }SOURCETYPE_E;
 
@@ -59,10 +63,10 @@ typedef enum DEMUX_DISABLE_TRACKINFO {
 
 typedef struct DEMUX_CHN_ATTR_S
 {
-    STREAMTYPE_E mStreamType;
+    //STREAMTYPE_E mStreamType;
     SOURCETYPE_E mSourceType;
-	char* mSourceUrl;
-    int mFd;
+    char* mSourceUrl; //only valid in calling function.
+    int mFd; //only valid in calling function.
     int mDemuxDisableTrack;    //DEMUX_DISABLE_AUDIO_TRACK
 }DEMUX_CHN_ATTR_S;
 

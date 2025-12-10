@@ -84,7 +84,7 @@ typedef enum PIXEL_FORMAT_E
     MM_PIXEL_FORMAT_RGB_1555,
 
     /*  9 reserved */
-    MM_PIXEL_FORMAT_RGB_888,
+    MM_PIXEL_FORMAT_RGB_888, //word-order, not byte-order!
     MM_PIXEL_FORMAT_RGB_8888,
 
     MM_PIXEL_FORMAT_RGB_PLANAR_888,
@@ -142,6 +142,7 @@ typedef enum PIXEL_FORMAT_E
     MM_PIXEL_FORMAT_AW_NV21M = 0x0100,   //NV21 Multi buffer contain nv21 data.
 
     MM_PIXEL_FORMAT_YUV_GREY,
+    MM_PIXEL_FORMAT_BGR_888,
 
     MM_PIXEL_FORMAT_BUTT
 } PIXEL_FORMAT_E;
@@ -277,7 +278,7 @@ typedef enum FRAME_FLAG_E {
 
 typedef struct VIDEO_FRAME_S
 {
-    unsigned int    mWidth;
+    unsigned int    mWidth; //unit:pixel, whole picture width and height, not equal to buffer width and height because picture width <= y-stride.
     unsigned int    mHeight;
     VIDEO_FIELD_E   mField;
     PIXEL_FORMAT_E  mPixelFormat;
@@ -287,13 +288,13 @@ typedef struct VIDEO_FRAME_S
 
     unsigned int    mPhyAddr[3];/* Y, U, V; Y, UV; Y, VU */
     void*           mpVirAddr[3];
-    unsigned int    mStride[3];
+    unsigned int    mStride[3]; //unit:byte. bytes per line.
 
     unsigned int    mHeaderPhyAddr[3];
     void*           mpHeaderVirAddr[3];
     unsigned int    mHeaderStride[3];
 
-    short           mOffsetTop;		/* top offset of show area */
+    short           mOffsetTop;		/* top offset of show area */ //unit:pixel
     short           mOffsetBottom;	/* bottom offset of show area */
     short           mOffsetLeft;	/* left offset of show area */
     short           mOffsetRight;	/* right offset of show area */
@@ -309,15 +310,7 @@ typedef struct VIDEO_FRAME_S
     */
 //    VIDEO_SUPPLEMENT_S mSupplement;
 
-    /* for frame specific informations.
-    *e.g. this is a Long-Exposure frame, you can set mFrmFlag = (exp_time)<<16 | FF_LONGEXP.
-    *e.g. somtimes, frame lost in kernel because of return time delay, then you can set
-    * mFrmFlag = (lost_num)<<16 | FF_FRAME_LOST; and maybe Venc can insert empty frames.
-    */
     unsigned int    mWhoSetFlag;   /* reserve(8bit)|COMP_TYPE(8bit)|DEV_NUM(8bit)|CHN_NUM(8bit) */
-    uint64_t        mFlagPts;      /* when generate this flag, unit(us) */
-    /* whats this flag, data(16bit)|flag(16bit), if you want a signed data, please use short data type */
-    unsigned int    mFrmFlag;
 } VIDEO_FRAME_S;
 
 typedef struct VIDEO_FRAME_INFO_S

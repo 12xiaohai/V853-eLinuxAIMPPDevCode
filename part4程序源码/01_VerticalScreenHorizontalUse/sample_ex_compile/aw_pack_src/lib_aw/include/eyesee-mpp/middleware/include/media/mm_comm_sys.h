@@ -33,7 +33,7 @@ typedef struct MPP_SYS_CONF_S
 
 typedef struct SYS_VIRMEM_INFO_S
 {
-    unsigned int  u32PhyAddr;
+    unsigned int  mPhyAddr;
     BOOL bCached;
 } SYS_VIRMEM_INFO_S;
 

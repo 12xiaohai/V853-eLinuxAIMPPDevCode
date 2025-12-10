@@ -13,6 +13,7 @@
 #ifndef __AI_CHANNEL_COMPONENT_H__
 #define __AI_CHANNEL_COMPONENT_H__
 
+#include <stdbool.h>
 //ref platform headers
 #include <plat_defines.h>
 #include <plat_errno.h>
@@ -28,8 +29,9 @@
 #include <tsemaphore.h>
 
 #include "ComponentCommon.h"
+#include <BufferManager.h>
 
-#include <aec_lib.h>
+//#include <aec_lib.h>
 
 #ifdef CFG_AUDIO_EFFECT_EQ
 #include "eq.h"
@@ -58,12 +60,35 @@ typedef enum AI_OUTPORT_SUFFIX_DEFINITION{
     AI_OUTPORT_SUFFIX_AO = 1,       // ai -> ao
 }AI_OUTPORT_SUFFIX_DEFINITION;
 
+typedef struct AudioCaptureFrameInfo
+{
+    AUDIO_FRAME_S mFrame;
+    //indicate if mFrame's buffer is malloc self. If PCMBufferManager's output data is divide by two sections, we malloc
+    //memory for mFrame to output.
+    bool mbMallocFlag;
+    //we use below members to store orig data info in PCMBufferManager, not malloc, so don't need free.
+    char *pOrigData;
+    int nOrigDataLen;
+    char *pOrigDataExtra;
+    int nOrigDataExtraLen;
+
+    //if AIO_ATTR_S->mbBypassAec is 1, we will use captureFrame and AecFrame to store. used in non-tunnel mode.
+    AUDIO_FRAME_S *mpCaptureFrame;
+    AEC_FRAME_S *mpAecFrame;
+
+    struct list_head mList;
+} AudioCaptureFrameInfo;
+AudioCaptureFrameInfo* constructAudioCaptureFrameInfo(unsigned int id);
+int clearAudioCaptureFrameInfo(AudioCaptureFrameInfo *pThiz);
+int destroyAudioCaptureFrameInfo(AudioCaptureFrameInfo *pThiz);
+
 typedef struct AI_CHN_DATA_S {
     COMP_STATETYPE state;
     pthread_mutex_t mStateLock;
     COMP_CALLBACKTYPE *pCallbacks;
     void *pAppData;
     COMP_HANDLETYPE hSelf;
+    char mThreadName[32];
 
     COMP_PORT_PARAM_TYPE sPortParam;
     COMP_PARAM_PORTDEFINITIONTYPE sPortDef[AI_CHN_MAX_PORTS];
@@ -77,6 +102,7 @@ typedef struct AI_CHN_DATA_S {
     message_queue_t mCmdQueue;
 
     MPP_CHN_S mMppChnInfo;
+    AI_CHN_ATTR_S mAiChnAttr;
     AI_CHN_PARAM_S mParam;
     volatile BOOL mbMute;
     BOOL mUseVqeLib;
@@ -84,11 +110,15 @@ typedef struct AI_CHN_DATA_S {
     AUDIO_SAMPLE_RATE_E mResmpRate;
     PCM_CONFIG_S *mpPcmCfg;
     AIO_ATTR_S *mpAioAttr;
+    int mAudioHwOutputAlsaFrameBytes;
     
     pthread_mutex_t mIgnoreDataLock;
     BOOL mbIgnore;
 
-    PcmBufferManager *mpCapMgr;
+    PCMBufferManager *mpCapMgr;
+    struct list_head mIdleOutFrameList;  //AudioCaptureFrameInfo
+    struct list_head mValidOutFrameList;
+    int mFrameNodeNum;
 
     pthread_mutex_t mCapMgrLock;
     volatile BOOL mWaitingCapDataFlag;

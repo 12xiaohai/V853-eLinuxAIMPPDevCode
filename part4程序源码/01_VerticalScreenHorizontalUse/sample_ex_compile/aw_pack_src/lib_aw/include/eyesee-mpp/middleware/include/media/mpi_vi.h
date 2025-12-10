@@ -30,31 +30,31 @@ extern "C" {
 /* Vi tunnel operations, Vipp & Osd/Mask & VirviChn Settings */
 // AW_S32 AW_MPI_VI_Init(void);
 // AW_S32 AW_MPI_VI_Exit(void);
-AW_S32 AW_MPI_VI_CreateVipp(VI_DEV ViDev);
-AW_S32 AW_MPI_VI_DestroyVipp(VI_DEV ViDev);
-AW_S32 AW_MPI_VI_SetVippAttr(VI_DEV ViDev, VI_ATTR_S *pstAttr);
-AW_S32 AW_MPI_VI_GetVippAttr(VI_DEV ViDev, VI_ATTR_S *pstAttr);
-AW_S32 AW_MPI_VI_SetVippMirror(VI_DEV ViDev, int Value);
-AW_S32 AW_MPI_VI_GetVippMirror(VI_DEV ViDev, int *Value);
-AW_S32 AW_MPI_VI_SetVippFlip(VI_DEV ViDev, int Value);
-AW_S32 AW_MPI_VI_GetVippFlip(VI_DEV ViDev, int *Value);
-AW_S32 AW_MPI_VI_EnableVipp(VI_DEV ViDev);
-AW_S32 AW_MPI_VI_DisableVipp(VI_DEV ViDev);
-AW_S32 AW_MPI_VI_SetVippShutterTime(VI_DEV ViDev, VI_SHUTTIME_CFG_S *pTime);
+ERRORTYPE AW_MPI_VI_CreateVipp(VI_DEV ViDev);
+ERRORTYPE AW_MPI_VI_DestroyVipp(VI_DEV ViDev);
+ERRORTYPE AW_MPI_VI_SetVippAttr(VI_DEV ViDev, VI_ATTR_S *pstAttr);
+ERRORTYPE AW_MPI_VI_GetVippAttr(VI_DEV ViDev, VI_ATTR_S *pstAttr);
+ERRORTYPE AW_MPI_VI_SetVippMirror(VI_DEV ViDev, int Value);
+ERRORTYPE AW_MPI_VI_GetVippMirror(VI_DEV ViDev, int *Value);
+ERRORTYPE AW_MPI_VI_SetVippFlip(VI_DEV ViDev, int Value);
+ERRORTYPE AW_MPI_VI_GetVippFlip(VI_DEV ViDev, int *Value);
+ERRORTYPE AW_MPI_VI_EnableVipp(VI_DEV ViDev);
+ERRORTYPE AW_MPI_VI_DisableVipp(VI_DEV ViDev);
+ERRORTYPE AW_MPI_VI_SetVippShutterTime(VI_DEV ViDev, VI_SHUTTIME_CFG_S *pTime);
 
 ERRORTYPE AW_MPI_VI_CreateVirChn(VI_DEV ViDev, VI_CHN ViCh, ViVirChnAttrS *pAttr);
 ERRORTYPE AW_MPI_VI_DestroyVirChn(VI_DEV ViDev, VI_CHN ViCh);
 ERRORTYPE AW_MPI_VI_GetVirChnAttr(VI_DEV ViDev, VI_CHN ViCh, ViVirChnAttrS *pAttr);
 ERRORTYPE AW_MPI_VI_SetVirChnAttr(VI_DEV ViDev, VI_CHN ViCh, ViVirChnAttrS *pAttr);
-AW_S32 AW_MPI_VI_EnableVirChn(VI_DEV ViDev, VI_CHN ViCh);
-AW_S32 AW_MPI_VI_DisableVirChn(VI_DEV ViDev, VI_CHN ViCh);
+ERRORTYPE AW_MPI_VI_EnableVirChn(VI_DEV ViDev, VI_CHN ViCh);
+ERRORTYPE AW_MPI_VI_DisableVirChn(VI_DEV ViDev, VI_CHN ViCh);
 /* VI non-tunnel operations */
-AW_S32 AW_MPI_VI_GetFrame(VI_DEV ViDev, VI_CHN ViCh, VIDEO_FRAME_INFO_S *pstFrameInfo, AW_S32 s32MilliSec);
-AW_S32 AW_MPI_VI_ReleaseFrame(VI_DEV ViDev, VI_CHN ViCh, VIDEO_FRAME_INFO_S *pstFrameInfo);
-AW_S32 AW_MPI_VI_SetShutterTime(VI_DEV ViDev, VI_CHN ViChnMask, VI_SHUTTIME_CFG_S *pTime);
+ERRORTYPE AW_MPI_VI_GetFrame(VI_DEV ViDev, VI_CHN ViCh, VIDEO_FRAME_INFO_S *pstFrameInfo, AW_S32 s32MilliSec);
+ERRORTYPE AW_MPI_VI_ReleaseFrame(VI_DEV ViDev, VI_CHN ViCh, VIDEO_FRAME_INFO_S *pstFrameInfo);
+ERRORTYPE AW_MPI_VI_SetShutterTime(VI_DEV ViDev, VI_CHN ViChnMask, VI_SHUTTIME_CFG_S *pTime);
 
 // Other Interface
-AW_S32 AW_MPI_VI_SetVIFreq(VI_DEV ViDev, int nFreq); //nFreq: MHz
+ERRORTYPE AW_MPI_VI_SetVIFreq(VI_DEV ViDev, int nFreq); //nFreq: MHz
 //AW_S32 AW_MPI_VI_GetInfo(); /* get bind config */
 
 ERRORTYPE AW_MPI_VI_RegisterCallback(VI_DEV ViDev, MPPCallbackInfo *pCallback);
@@ -67,6 +67,8 @@ ERRORTYPE AW_MPI_VI_GetIspDev(VI_DEV ViDev, ISP_DEV *pIspDev);
 
 ERRORTYPE AW_MPI_VI_SetCrop(VI_DEV ViDev, const VI_CROP_CFG_S *pCropCfg);
 ERRORTYPE AW_MPI_VI_GetCrop(VI_DEV ViDev, VI_CROP_CFG_S *pCropCfg);
+
+ERRORTYPE AW_MPI_VI_SetSyncCtrl(VI_DEV ViDev, const struct csi_sync_ctrl *pSync);
 
 AW_S32 AW_MPI_ISP_SetMirror(VI_DEV ViDev, int Value);
 AW_S32 AW_MPI_ISP_SetFlip(VI_DEV ViDev, int Value);

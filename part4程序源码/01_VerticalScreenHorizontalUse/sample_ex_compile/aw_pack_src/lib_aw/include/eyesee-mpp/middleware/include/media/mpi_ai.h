@@ -38,7 +38,7 @@ ERRORTYPE AW_MPI_AI_ResetChn(AUDIO_DEV AudioDevId, AI_CHN AiChn);
 ERRORTYPE AW_MPI_AI_PauseChn(AUDIO_DEV AudioDevId, AI_CHN AiChn);
 ERRORTYPE AW_MPI_AI_ResumeChn(AUDIO_DEV AudioDevId, AI_CHN AiChn);
 
-ERRORTYPE AW_MPI_AI_CreateChn(AUDIO_DEV AudioDevId, AI_CHN AiChn);
+ERRORTYPE AW_MPI_AI_CreateChn(AUDIO_DEV AudioDevId, AI_CHN AiChn, const AI_CHN_ATTR_S *pAttr);
 ERRORTYPE AW_MPI_AI_DestroyChn(AUDIO_DEV AudioDevId, AI_CHN AiChn);
 
 ERRORTYPE AW_MPI_AI_EnableChn(AUDIO_DEV AudioDevId, AI_CHN AiChn);
@@ -51,6 +51,7 @@ ERRORTYPE AW_MPI_AI_SetChnParam(AUDIO_DEV AudioDevId, AI_CHN AiChn, AI_CHN_PARAM
 ERRORTYPE AW_MPI_AI_GetChnParam(AUDIO_DEV AudioDevId, AI_CHN AiChn, AI_CHN_PARAM_S *pstChnParam);
 
 ERRORTYPE AW_MPI_AI_RegisterCallback(AUDIO_DEV AudioDevId, AI_CHN AiChn, MPPCallbackInfo *pCallback);
+ERRORTYPE AW_MPI_AI_RegisterDevCallback(AUDIO_DEV AudioDevId, void *cookie, AudioDevCallbackFuncType pAudioDevCallback);
 
 //ERRORTYPE AW_MPI_AI_SetVqeAttr(AUDIO_DEV AiDevId, AI_CHN AiChn, AUDIO_DEV AoDevId, AO_CHN AoChn, AI_VQE_CONFIG_S *pstVqeConfig);
 ERRORTYPE AW_MPI_AI_SetVqeAttr(AUDIO_DEV AiDevId, AI_CHN AiChn, AI_VQE_CONFIG_S *pstVqeConfig); //
@@ -89,6 +90,9 @@ ERRORTYPE AW_MPI_AI_SuspendAns(AUDIO_DEV AudioDevId);
 ERRORTYPE AW_MPI_AI_ResumeAns(AUDIO_DEV AudioDevId);
 ERRORTYPE AW_MPI_AI_SuspendAec(AUDIO_DEV AudioDevId);
 ERRORTYPE AW_MPI_AI_ResumeAec(AUDIO_DEV AudioDevId);
+ERRORTYPE AW_MPI_AI_SetAgcDb(AUDIO_DEV AudioDevId, float fDbGain);
+ERRORTYPE AW_MPI_AI_GetAgcDb(AUDIO_DEV AudioDevId, float *pfDbGain);
+
 
 #ifdef __cplusplus
 }

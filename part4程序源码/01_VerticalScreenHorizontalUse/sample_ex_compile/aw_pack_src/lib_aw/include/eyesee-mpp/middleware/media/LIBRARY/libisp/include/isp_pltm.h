@@ -25,6 +25,10 @@ typedef struct isp_pltm_param {
 	HW_U16 *gamma_tbl;
 	HW_U32 *hist0_buf;
 	HW_U32 *hist1_buf;
+
+	HW_S8 wdr_stitch_en;
+	HW_S32 wdr_ratio_real;
+	isp_sensor_info_t sensor_info;
 } pltm_param_t;
 
 typedef struct isp_pltm_stats {
@@ -36,7 +40,6 @@ typedef struct isp_pltm_result {
 	//int pltm_normal_lum[4];
 	//int pltm_hdr_weight[4];
 	int pltm_hdr_calc_ratio[4];
-	HW_U16 pltm_tar_stren;
 	int pltm_hdr_ratio;
 	HW_U16 pltm_auto_stren;
 	HW_U16 pltm_sharp_ss_compensation; //to provide the probability for sharpness module by adjusting its' ss_ns_lw & ls_ns_lw to parameter which can control the dark noise.
@@ -44,6 +47,8 @@ typedef struct isp_pltm_result {
 	HW_U16 pltm_d2d_compensation;
 	HW_U16 pltm_d3d_compensation;
 	HW_U16 pltm_dark_block_num;
+	HW_S32 cur_pic_lum;
+	HW_S32 tar_pic_lum;
 } pltm_result_t;
 
 typedef struct isp_pltm_core_ops {

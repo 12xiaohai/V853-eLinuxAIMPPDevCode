@@ -186,10 +186,10 @@ private:
     VENC_CHN_ATTR_S mVencChnAttr;
 
     // mux chn
-    MUX_GRP mMuxGrp;
+    //MUX_GRP mMuxGrp;
     MUX_CHN mMuxChn;
     MUX_CHN_INFO_S mMuxChnInfo;
-    MUX_GRP_ATTR_S mMuxGrpAttr;
+    //MUX_GRP_ATTR_S mMuxGrpAttr;
 
     ResizerOutputDest mOutDest;
 
@@ -199,7 +199,7 @@ private:
 
     std::list<std::shared_ptr<VREncBuffer>> mBufList;
 
-    bool create_MUX_GRP_CHN();
+    //bool create_MUX_GRP_CHN();
     bool create_MUX_CHN();
     bool create_CLOCK_CHN();
     bool create_VDEC_CHN();

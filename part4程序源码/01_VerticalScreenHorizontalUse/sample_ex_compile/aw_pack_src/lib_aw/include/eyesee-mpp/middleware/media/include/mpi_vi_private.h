@@ -33,11 +33,8 @@ AW_S32 AW_MPI_VI_Init(void);
 AW_S32 AW_MPI_VI_Exit(void);
 MM_COMPONENTTYPE *videoInputHw_GetChnComp(VI_DEV ViDev, VI_CHN ViChn);
 
-/**
- * Store region. If region is available to show, draw region immediately.
- */
-ERRORTYPE AW_MPI_VI_SetRegion(VI_DEV ViDev, RGN_HANDLE RgnHandle, RGN_ATTR_S *pRgnAttr, const RGN_CHN_ATTR_S *pRgnChnAttr, BITMAP_S *pBmp);
-ERRORTYPE AW_MPI_VI_DeleteRegion(VI_DEV ViDev, RGN_HANDLE RgnHandle);
+ERRORTYPE AW_MPI_VI_SetRegions(VI_DEV ViDev, RgnChnAttachDetailPack *pPack);
+ERRORTYPE AW_MPI_VI_DeleteRegions(VI_DEV ViDev, RgnChnAttachDetailPack *pPack);
 
 /**
  * draw this overlay immediately

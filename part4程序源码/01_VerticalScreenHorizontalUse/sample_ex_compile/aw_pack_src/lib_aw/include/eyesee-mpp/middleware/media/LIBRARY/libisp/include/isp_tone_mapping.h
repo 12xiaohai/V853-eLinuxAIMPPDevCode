@@ -37,6 +37,10 @@ typedef enum isp_gamma_type {
 	ISP_GTM_GAMMA_TYPE_MAX,
 } gtm_gamma_type_t;
 
+typedef enum isp_ldci_video_type {
+	ISP_LDCI_VIDEO_INTERNAL = 0,
+	ISP_LDCI_VIDEO_EXTERNAL = 1,
+} ldci_video_type_t;
 
 typedef struct isp_gtm_ini_cfg {
 	HW_S8 hist_sel;
@@ -89,9 +93,13 @@ typedef struct isp_gtm_param {
 
 	HW_U8 ldci_entity_id;
 	HW_U8 ldci_work_en;
+	HW_U8 ldci_work_cnt;
 	HW_U16 ldci_video_chn;
 	HW_U8 ldci_video_init_en;
 	HW_U16 current_colorspace;
+	HW_U8 *ldci_external_buf;
+	HW_S32 ldci_external_buf_len;
+	pthread_mutex_t ldci_external_buf_lock;
 } gtm_param_t;
 
 typedef struct isp_gtm_stats {
@@ -104,7 +112,9 @@ typedef struct isp_gtm_result {
 	HW_U16 avg_var;
 	HW_U16 hist_div;
 	double hratio_last;
+	HW_U8 ldci_merge_mode;
 	HW_S32 hdr_req;
+	HW_U16 drc_table_output[ISP_DRC_TBL_SIZE];
 } gtm_result_t;
 
 typedef struct isp_gtm_core_ops {
