@@ -21,6 +21,17 @@ struct rpmsg_endpoint_info {
 	__u32 dst;
 };
 
+/**
+ * struct rpmsg_ctrl_msg - used by rpmsg_master.c
+ * @name: user define
+ * @id: update by driver
+ * @cmd:only can RPMSG_CTRL_OPEN or RPMSG_CTRL_CLOSE
+ * */
+struct rpmsg_ept_info {
+	char name[32];
+	uint32_t id;
+};
+
 #define RPMSG_CREATE_EPT_IOCTL	_IOW(0xb5, 0x1, struct rpmsg_endpoint_info)
 #define RPMSG_DESTROY_EPT_IOCTL	_IO(0xb5, 0x2)
 

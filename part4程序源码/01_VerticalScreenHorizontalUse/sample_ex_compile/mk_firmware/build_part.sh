@@ -20,7 +20,7 @@ sdk_tmp_dir=${sdk_out_dir}/fex
 
 app_name=
 rootfs_image_name=rootfs.fex
-aw_image_name=tina_ipc_uart0_nor.img
+aw_image_name=tina_ipc_uart0.img
 
 #####################squashfs configuare####################
 SQUASHFS_COMP=xz

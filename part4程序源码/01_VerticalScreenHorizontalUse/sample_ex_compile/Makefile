@@ -37,7 +37,7 @@ rootfs_share_lib_dir=$(ROOT_DIR)/share_lib
 LINKFLAGS = \
 	-lpthread -lrt -ldl -lm -Wl,--gc-sections \
 	-L$(mpp_lib_dir) \
-	-L$(rootfs_share_lib_dir)
+	-L$(rootfs_share_lib_dir) \
 	-L$(aiisp_dir) \
 	-L$(viplite_dir) -lpix_facekit_api
 
@@ -76,7 +76,7 @@ mpp_lib := \
   -Wl,--no-whole-archive \
   -Wl,-Bdynamic  \
   -lglog \
-  -lasound
+  -lasound \
   -lion \
   -law_mpp \
   -lmedia_utils \
@@ -91,6 +91,7 @@ mpp_lib := \
   -lawnn \
   -lVIPuser \
   -lpix_facekit_api
+
 #手动多媒体包含的库，根据自己的选择增减
 #mpp_lib := \
 #  -Wl,-Bstatic -Wl,--whole-archive -Wl,--start-group \
