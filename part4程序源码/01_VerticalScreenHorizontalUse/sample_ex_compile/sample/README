@@ -1,0 +1,5 @@
+1. 这里是放mpp的sample文件夹
+2. 一次只能放一个sample，因为整个工程只能有一个main函数
+3. 可以直接从V系列的Tina SDK 拷贝过来， SDK 的sample地址为：
+external/eyesee-mpp/middleware/sun8iw21/sample
+4. 示例拷贝了一个sample_virvi2venc 文件过来

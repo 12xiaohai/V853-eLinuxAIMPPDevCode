@@ -2,13 +2,11 @@
 #include <iostream>
 #include <string>
 
-
 // FFmpeg库的头文件
 extern "C" {
 #include <libavcodec/avcodec.h>   // 包含用于编解码的函数
 #include <libavformat/avformat.h> // 包含用于处理多媒体格式的函数
 #include <libavutil/opt.h>        // 包含用于设置选项的辅助函数
-
 }
 
 int main(int argc, char *argv[]) {

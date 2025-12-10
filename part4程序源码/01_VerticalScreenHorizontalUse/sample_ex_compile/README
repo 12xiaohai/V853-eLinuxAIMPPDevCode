@@ -1,0 +1,45 @@
+1. 本编译系统是一个演示全志V系多媒体mpp sample 脱离Tian SDK 编译的并编译后放到rootfs下重新做固件的一个demo
+2. 本编译系统目录结构介绍
+	├── aw_pack_src #这个目录是V系列Tina SDK 编译打包后输出的目录,里面包含了库和分区文件
+	├── build.sh    #编译脚本
+	├── Makefile    #编译Makefile，可作为自己工程的参考
+	├── output      #编译后的应用和中间产物
+	├── sample      #sample 放置的目录
+	├── share_lib   #需要依赖的动态库（设备端rootfs也有）
+	├── mk_firmware #制作全志固件的脚本
+	└── toolchain   #编译工具链
+	
+
+2. 使用方法：
+   ①将V系列多媒体sample 拷贝到 ./sample 目前下。阅读./sample/README了解详情；
+   ②将Tina SDK 新输出的文件夹aw_pack_src 重新替换当前的./aw_pack_src（）
+   ③执行./build.sh 进行编译
+   ④编译成功后。在./out 可看到sample 和 strip 后的sample
+   
+3. Tina SDK 如何生成新的aw_pack_src（库和头文件）来替换？
+①选上配置
+make menuconfig  --->Target Images  --->[*]support pack out of tina
+
+②pack 打包，然后会在out/xx方案/生成一个目录：aw_pack_src，将此目录拷贝出来即可
+
+
+4. 重新替换了个sample，但编译出错怎么解决？
+①cannot find -lxx 库
+因为多媒体的库会根据make meunconfig 来配置一些功能组件。如果需要增加/裁剪功能，则编译出来可能就多或少一些库了。
+如果发现报错cannot find -lxx ， 可以直接尝试修改Makefile，把这个-lxxx 去掉再编译试试。
+
+② undefined reference  xxx： 函数
+因为多媒体的库会根据make meunconfig 来配置一些功能组件。如果需要增加/裁剪，则编译出来可能就多或少一些库了。
+如果发现报错undefined reference  xxx：，则可以库目录下执行grep -rn "xxx", 看能不能搜索出一些结果是关于库的，如：
+grep -rn "AW_MPI_SYS_Init"
+
+Binary file ./aw_pack_src/lib_aw/lib/eyesee-mpp/libaw_mpp.a matches
+
+搜到AW_MPI_SYS_Init 结果在libaw_mpp.a库里面。 这时候在Makefile里面 加入-law_mpp 即可。
+
+如果在本目录搜不到，则可以去Tina SDK目录搜索：
+grep -rn "AW_MPI_SYS_Init" out/v851se-perf1/staging_dir/target/usr/lib   #注意v851se-perf1 是板子的名称。 这个目录下是SDK 编译出来的所有库 。
+
+
+
+auther: wuguanling@allwinnertech.com
