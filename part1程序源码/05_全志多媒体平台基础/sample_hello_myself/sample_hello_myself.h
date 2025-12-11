@@ -1,0 +1,4 @@
+#ifndef _SAMPLE_HELLO_MYSELF_H_
+#define _SAMPLE_HELLO_MYSELF_H_
+
+#endif
