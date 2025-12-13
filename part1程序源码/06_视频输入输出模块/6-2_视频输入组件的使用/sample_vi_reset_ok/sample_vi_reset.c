@@ -8,15 +8,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "media/mm_comm_vi.h"
 #include "media/mpi_isp.h"
 #include "media/mpi_sys.h"
 #include "media/mpi_vi.h"
 #include <mpi_videoformat_conversion.h>
 #include <utils/plat_log.h>
+
+
 #include "sample_vi_reset.h"
 #include "sample_vi_reset_config.h"
 #include <confparser.h>
+
+
+#define TEST_FLIP (0)
 
 static int parseCmdLine(SampleViResetContext *pContext, int argc,
                         char *argv[]) {
@@ -104,9 +110,208 @@ static ERRORTYPE LoadSampleViResetConfig(SampleViResetConfig *pConfig,
   return SUCCESS;
 }
 
+int hal_virvi_start(VI_DEV ViDev, VI_CHN ViCh, void *pAttr) {
+  ERRORTYPE ret = -1;
+
+  ret = AW_MPI_VI_CreateVirChn(ViDev, ViCh, pAttr);
+  if (ret < 0) {
+    aloge("Create VI Chn failed,VIDev = %d,VIChn = %d", ViDev, ViCh);
+    return ret;
+  }
+  ret = AW_MPI_VI_SetVirChnAttr(ViDev, ViCh, pAttr);
+  if (ret < 0) {
+    aloge("Set VI ChnAttr failed,VIDev = %d,VIChn = %d", ViDev, ViCh);
+    return ret;
+  }
+  ret = AW_MPI_VI_EnableVirChn(ViDev, ViCh);
+  if (ret < 0) {
+    aloge("VI Enable VirChn failed,VIDev = %d,VIChn = %d", ViDev, ViCh);
+    return ret;
+  }
+
+  return 0;
+}
+
+int hal_virvi_end(VI_DEV ViDev, VI_CHN ViCh) {
+  int ret = -1;
+  ret = AW_MPI_VI_DisableVirChn(ViDev, ViCh);
+  if (ret < 0) {
+    aloge("Disable VI Chn failed,VIDev = %d,VIChn = %d", ViDev, ViCh);
+    return ret;
+  }
+  ret = AW_MPI_VI_DestroyVirChn(ViDev, ViCh);
+  if (ret < 0) {
+    aloge("Destory VI Chn failed,VIDev = %d,VIChn = %d", ViDev, ViCh);
+    return ret;
+  }
+  return 0;
+}
+
+static void *GetCSIFrameThread(void *pArg) {
+  VI_DEV ViDev;
+  VI_CHN ViCh;
+  int ret = 0;
+  int i = 0, j = 0;
+
+  VirViChnInfo *pCap = (VirViChnInfo *)pArg;
+  ViDev = pCap->mVipp;
+  ViCh = pCap->mVirChn;
+  alogd("Cap threadid=0x%lx, ViDev = %d, ViCh = %d", pCap->mThid, ViDev, ViCh);
+  int nFlipValue = 0;
+  int nFlipTestCnt = 0;
+  while (pCap->mCaptureFrameCount > j) {
+    if ((ret = AW_MPI_VI_GetFrame(ViDev, ViCh, &pCap->mFrameInfo,
+                                  pCap->mMilliSec)) != 0) {
+      alogw("Vipp[%d,%d] Get Frame failed!", ViDev, ViCh);
+      continue;
+    }
+    i++;
+    if (i % 20 == 0) {
+      time_t now;
+      struct tm *timenow;
+      time(&now);
+      timenow = localtime(&now);
+      alogd(
+          "Cap threadid=0x%lx, ViDev=%d, VirVi=%d, mpts=%lld; local time is %s",
+          pCap->mThid, ViDev, ViCh, pCap->mFrameInfo.VFrame.mpts,
+          asctime(timenow));
+#if 0
+            FILE *fd;
+            char filename[128];
+            sprintf(filename, "/tmp/%dx%d_%d.yuv",
+                pCap->pstFrameInfo.VFrame.mWidth,
+                pCap->pstFrameInfo.VFrame.mHeight,
+                i);
+            fd = fopen(filename, "wb+");
+            fwrite(pCap->pstFrameInfo.VFrame.mpVirAddr[0],
+                    pCap->pstFrameInfo.VFrame.mWidth * pCap->pstFrameInfo.VFrame.mHeight,
+                    1, fd);
+            fwrite(pCap->pstFrameInfo.VFrame.mpVirAddr[1],
+                    pCap->pstFrameInfo.VFrame.mWidth * pCap->pstFrameInfo.VFrame.mHeight >> 1,
+                    1, fd);
+            fclose(fd);
+#endif
+    }
+    AW_MPI_VI_ReleaseFrame(ViDev, ViCh, &pCap->mFrameInfo);
+    j++;
+#if TEST_FLIP
+    if (j == pCap->mCaptureFrameCount) {
+      j = 0;
+      if (0 == ViDev) {
+        nFlipValue = !nFlipValue;
+        nFlipTestCnt++;
+        AW_MPI_VI_SetVippMirror(ViDev, nFlipValue);
+        AW_MPI_VI_SetVippFlip(ViDev, nFlipValue);
+        alogd("vipp[%d] mirror and flip:%d, test count:%d begin.", ViDev,
+              nFlipValue, nFlipTestCnt);
+      }
+    }
+#endif
+  }
+  return NULL;
+}
+
+int RunOneVipp(VI_DEV nVippIndex, SampleViResetContext *pContext) {
+  ERRORTYPE ret = SUCCESS;
+  /*Set VI Channel Attribute*/
+  memset(&pContext->mViAttr, 0, sizeof(VI_ATTR_S));
+  pContext->mViAttr.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+  pContext->mViAttr.memtype = V4L2_MEMORY_MMAP;
+  pContext->mViAttr.format.pixelformat =
+      map_PIXEL_FORMAT_E_to_V4L2_PIX_FMT(pContext->mConfigPara.mPicFormat);
+  pContext->mViAttr.format.field = V4L2_FIELD_NONE;
+  alogd("nVippIndex=%d", nVippIndex);
+  if (0 == nVippIndex) {
+    pContext->mViAttr.format.width = pContext->mConfigPara.mPicWidth;
+    pContext->mViAttr.format.height = pContext->mConfigPara.mPicHeight;
+  } else {
+    pContext->mViAttr.format.width = pContext->mConfigPara.mSubPicWidth;
+    pContext->mViAttr.format.height = pContext->mConfigPara.mSubPicHeight;
+  }
+  pContext->mViAttr.nbufs = 3; // 5;
+  pContext->mViAttr.nplanes = 2;
+  pContext->mViAttr.fps = pContext->mConfigPara.mFrameRate;
+  /* update configuration anyway, do not use current configuration */
+  if (false == pContext->mFirstVippRunFlag) {
+    pContext->mViAttr.use_current_win = 0;
+    pContext->mFirstVippRunFlag = true;
+  } else {
+    pContext->mViAttr.use_current_win = 1;
+  }
+  pContext->mViAttr.wdr_mode = 0;
+  pContext->mViAttr.capturemode = V4L2_MODE_VIDEO;
+  pContext->mViAttr.drop_frame_num = 0;
+  ret = AW_MPI_VI_CreateVipp(nVippIndex);
+  if (ret != SUCCESS) {
+    aloge("fatal error! create vipp[%d] fail[0x%x]", nVippIndex, ret);
+  }
+  ret = AW_MPI_VI_SetVippAttr(nVippIndex, &pContext->mViAttr);
+  if (ret != SUCCESS) {
+    aloge("fatal error! set vipp attr[%d] fail[0x%x]", nVippIndex, ret);
+  }
+  if (pContext->mConfigPara.mbRunIsp && false == pContext->mbIspRunningFlag) {
+    ret = AW_MPI_ISP_Run(pContext->mConfigPara.mIspDev);
+    if (ret != SUCCESS) {
+      aloge("fatal error! isp[%d] run fail[0x%x]",
+            pContext->mConfigPara.mIspDev, ret);
+    }
+    pContext->mbIspRunningFlag = true;
+  }
+  ret = AW_MPI_VI_EnableVipp(nVippIndex);
+  if (ret != SUCCESS) {
+    aloge("fatal error! enable vipp[%d] fail[0x%x]", nVippIndex, ret);
+  }
+  VI_CHN virvi_chn = 0;
+  for (virvi_chn = 0; virvi_chn < 1 /*MAX_VIR_CHN_NUM*/; virvi_chn++) {
+    VirViChnInfo *pChnInfo = &pContext->mVirViChnArray[nVippIndex][virvi_chn];
+    memset(pChnInfo, 0, sizeof(VirViChnInfo));
+    pChnInfo->mVipp = nVippIndex;
+    pChnInfo->mVirChn = virvi_chn;
+    pChnInfo->mMilliSec = 5000; // 2000;
+    pChnInfo->mCaptureFrameCount = pContext->mConfigPara.mFrameCountStep1;
+    ret = hal_virvi_start(nVippIndex, virvi_chn, NULL);
+    if (ret != 0) {
+      aloge("virvi start failed!");
+    }
+    pChnInfo->mThid = 0;
+    ret = pthread_create(&pChnInfo->mThid, NULL, GetCSIFrameThread,
+                         (void *)pChnInfo);
+    if (0 == ret) {
+      alogd("pthread create success, vipp[%d], virChn[%d]", pChnInfo->mVipp,
+            pChnInfo->mVirChn);
+    } else {
+      aloge("fatal error! pthread_create failed, vipp[%d], virChn[%d]",
+            pChnInfo->mVipp, pChnInfo->mVirChn);
+    }
+  }
+  return ret;
+}
+
+int DestroyOneVipp(VI_DEV nVippIndex, SampleViResetContext *pContext) {
+  int ret = 0;
+  VI_CHN virvi_chn = 0;
+  for (virvi_chn = 0; virvi_chn < 1; virvi_chn++) {
+    ret = hal_virvi_end(nVippIndex, virvi_chn);
+    if (ret != 0) {
+      aloge("fatal error! virvi[%d,%d] end failed!", nVippIndex, virvi_chn);
+    }
+  }
+  ret = AW_MPI_VI_DisableVipp(nVippIndex);
+  if (ret != SUCCESS) {
+    aloge("fatal error! disable vipp[%d] fail", nVippIndex);
+  }
+  ret = AW_MPI_VI_DestroyVipp(nVippIndex);
+  if (ret != SUCCESS) {
+    aloge("fatal error! destroy vipp[%d] fail", nVippIndex);
+  }
+  alogd("vipp[%d] is destroyed!", nVippIndex);
+  return ret;
+}
+
 int main(int argc, char *argv[]) {
   int result = 0;
-
+  int virvi_chn;
+  ERRORTYPE ret;
   /* 步骤 1: 启动MPP和Glog库 */
   GLogConfig stGLogConfig = {
       .FLAGS_logtostderr = 1,
@@ -126,7 +331,7 @@ int main(int argc, char *argv[]) {
   stSysConf.nAlignWidth = 32;
   AW_MPI_SYS_SetConf(&stSysConf);
   /* 步骤 3: 初始化ISP */
-  ERRORTYPE ret = AW_MPI_SYS_Init();
+  ret = AW_MPI_SYS_Init();
   if (ret != SUCCESS) {
     aloge("MPP System Init failed!");
     log_quit();
@@ -154,6 +359,42 @@ int main(int argc, char *argv[]) {
     aloge("fatal error! no config file or parse conf file fail");
     result = -1;
     goto _exit;
+  }
+
+  /* 步骤 4: 创建VI组件 */
+  while (pContext->mTestNum < pContext->mConfigPara.mTestCount ||
+         pContext->mConfigPara.mTestCount == 0) {
+    alogd("===================================");
+    alogd("Auto Test count :%d. (MaxCount == %d)", pContext->mTestNum,
+          pContext->mConfigPara.mTestCount);
+    alogd("===================================");
+    VI_DEV nVippIndex;
+    for (nVippIndex = pContext->mConfigPara.mVippStart;
+         nVippIndex <= pContext->mConfigPara.mVippEnd; nVippIndex++) {
+      RunOneVipp(HVIDEO(nVippIndex, 0), pContext);
+    }
+    for (nVippIndex = pContext->mConfigPara.mVippStart;
+         nVippIndex <= pContext->mConfigPara.mVippEnd; nVippIndex++) {
+      for (virvi_chn = 0; virvi_chn < 1; virvi_chn++) {
+        pthread_join(
+            pContext->mVirViChnArray[HVIDEO(nVippIndex, 0)][virvi_chn].mThid,
+            NULL);
+        alogd("vipp[%d]virChn[%d] capture thread is exit!",
+              HVIDEO(nVippIndex, 0), virvi_chn);
+      }
+    }
+    for (nVippIndex = pContext->mConfigPara.mVippStart;
+         nVippIndex <= pContext->mConfigPara.mVippEnd; nVippIndex++) {
+      DestroyOneVipp(HVIDEO(nVippIndex, 0), pContext);
+    }
+    if (pContext->mbIspRunningFlag) {
+      AW_MPI_ISP_Stop(pContext->mConfigPara.mIspDev);
+      alogd("isp[%d] is stopped!", pContext->mConfigPara.mIspDev);
+      pContext->mbIspRunningFlag = false;
+    }
+    pContext->mTestNum++;
+    pContext->mFirstVippRunFlag = false;
+    alogd("[%d] test time is done!", pContext->mTestNum);
   }
 
   /* 步骤 7: 退出MPP  */
