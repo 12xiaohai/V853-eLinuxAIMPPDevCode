@@ -4,7 +4,7 @@
 
 #include <plat_type.h>
 #include <tsemaphore.h>
-
+#include <mm_comm_vi.h>
 #define MAX_FILE_PATH_SIZE (256)
 
 typedef struct SampleViResetCmdLineParam

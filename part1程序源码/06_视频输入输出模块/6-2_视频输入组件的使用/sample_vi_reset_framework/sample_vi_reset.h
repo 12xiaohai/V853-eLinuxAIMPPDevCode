@@ -14,18 +14,18 @@ typedef struct SampleViResetCmdLineParam
 
 typedef struct SampleViResetConfig
 {
-    int mTestCount;
+    int mTestCount;          // 循环测试reset的次数
     int mFrameCountStep1;   //capture this number of frames, then reset vi.
-    bool mbRunIsp;
-    ISP_DEV mIspDev;
+    bool mbRunIsp;          // 是否运行ISP
+    ISP_DEV mIspDev;        // ISP编号
     VI_DEV mVippStart;    //vipp0~3
     VI_DEV mVippEnd;    //vipp0~3
-    int mPicWidth;
-    int mPicHeight;
-    int mSubPicWidth;
+    int mPicWidth;      // 采集图像的宽度
+    int mPicHeight;     // 采集图像的高度
+    int mSubPicWidth;   
     int mSubPicHeight;
-    int mFrameRate;
-    PIXEL_FORMAT_E mPicFormat; //MM_PIXEL_FORMAT_YUV_PLANAR_420
+    int mFrameRate;     // 采集帧率
+    PIXEL_FORMAT_E mPicFormat; //MM_PIXEL_FORMAT_YUV_PLANAR_420 图像格式
 }SampleViResetConfig;
 
 typedef struct VirViChnInfo 
