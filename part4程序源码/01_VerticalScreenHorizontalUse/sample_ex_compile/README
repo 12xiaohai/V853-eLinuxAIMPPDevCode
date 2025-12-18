@@ -41,5 +41,6 @@ Binary file ./aw_pack_src/lib_aw/lib/eyesee-mpp/libaw_mpp.a matches
 grep -rn "AW_MPI_SYS_Init" out/v851se-perf1/staging_dir/target/usr/lib   #注意v851se-perf1 是板子的名称。 这个目录下是SDK 编译出来的所有库 。
 
 
+5. 这里我把sample_virvi2venc 改名为 ipcam_camera 重新构建了一个main函数，详情参考 sample/README 文件
 
-auther: wuguanling@allwinnertech.com
+auther: wuguanling@allwinnertech.com	t927456729@gmail.com

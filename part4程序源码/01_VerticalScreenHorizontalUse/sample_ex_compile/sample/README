@@ -3,3 +3,7 @@
 3. 可以直接从V系列的Tina SDK 拷贝过来， SDK 的sample地址为：
 external/eyesee-mpp/middleware/sun8iw21/sample
 4. 示例拷贝了一个sample_virvi2venc 文件过来
+5. 这里我们把sample_virvi2venc 改名为 ipcam_camera 重新构建了一个main函数
+6. 该sample的功能是：验证脱离Tina SDK环境下，单独编译和打包固件的完整性，main程序只是输出打印 “hello tina mpp”
+7. 改sample目录下的build.mk以及build_static.mk文件，是在Tina SDK环境下拷贝过来的，依赖Tina SDK的编译环境，这里可以删除，但是我们保留了，为了后续作为库依赖参考
+8. 该项目实际的编译和打包脚本在根目录下的build.sh 和 Makefile 文件中
