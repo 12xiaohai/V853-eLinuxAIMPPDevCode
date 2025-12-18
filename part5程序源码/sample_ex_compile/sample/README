@@ -1,0 +1,7 @@
+1. 这里是放mpp的sample文件夹
+2. 一次只能放一个sample，因为整个工程只能有一个main函数
+3. 可以直接从V系列的Tina SDK 拷贝过来， SDK 的sample地址为：external/eyesee-mpp/middleware/sun8iw21/sample  也可以把part1-2里的sample源码一一拷贝到 part5程序源码/sample_ex_compile/sample/ 目录下来学习各个组件
+4. 示例拷贝了一个sample_virvi2venc 文件过来
+5. 该sample的功能是：验证脱离Tina SDK环境下，单独编译和打包固件的完整性
+6. 该sample目录下的build.mk以及build_static.mk文件，是在Tina SDK环境下拷贝过来的，依赖Tina SDK的编译环境，这里可以删除，但是我们保留了，为了后续作为库依赖参考
+8. 该项目实际的编译和打包脚本在根目录下的build.sh 和 Makefile 文件中
