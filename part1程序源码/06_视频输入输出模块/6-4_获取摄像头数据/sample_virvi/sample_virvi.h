@@ -3,6 +3,7 @@
 
 #include <plat_type.h>
 #include <tsemaphore.h>
+#include <media/mm_comm_vi.h>
 
 #define MAX_FILE_PATH_SIZE  (256)
 #define MAX_CAPTURE_NUM     (4)
