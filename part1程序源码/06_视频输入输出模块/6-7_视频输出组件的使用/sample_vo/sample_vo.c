@@ -1,5 +1,3 @@
-
-//#define LOG_NDEBUG 0
 #define LOG_TAG "sample_vo"
 #include <utils/plat_log.h>
 
@@ -17,11 +15,14 @@
 
 #include <confparser.h>
 
+/* 一、关键结构体的定义 */
 #include "sample_vo.h"
 #include "sample_vo_config.h"
 
 #include <cdx_list.h>
 
+
+/* 取帧节点 */
 VIDEO_FRAME_INFO_S *SampleVOFrameManager_PrefetchFirstIdleFrame(void *pThiz) {
   SampleVOFrameManager *pFrameManager = (SampleVOFrameManager *)pThiz;
   SampleVOFrameNode *pFirstNode;
@@ -37,6 +38,8 @@ VIDEO_FRAME_INFO_S *SampleVOFrameManager_PrefetchFirstIdleFrame(void *pThiz) {
   pthread_mutex_unlock(&pFrameManager->mLock);
   return pFrameInfo;
 }
+
+/* 用帧节点 */
 int SampleVOFrameManager_UseFrame(void *pThiz, VIDEO_FRAME_INFO_S *pFrame) {
   int ret = 0;
   SampleVOFrameManager *pFrameManager = (SampleVOFrameManager *)pThiz;
@@ -63,6 +66,7 @@ int SampleVOFrameManager_UseFrame(void *pThiz, VIDEO_FRAME_INFO_S *pFrame) {
   return ret;
 }
 
+/* 还帧节点 */
 int SampleVOFrameManager_ReleaseFrame(void *pThiz, unsigned int nFrameId) {
   int ret = 0;
   SampleVOFrameManager *pFrameManager = (SampleVOFrameManager *)pThiz;
@@ -84,6 +88,7 @@ int SampleVOFrameManager_ReleaseFrame(void *pThiz, unsigned int nFrameId) {
   return ret;
 }
 
+/* 二、内存池实现 */
 int initSampleVOFrameManager(SampleVOFrameManager *pFrameManager, int nFrameNum,
                              SampleVOConfig *pConfigPara) {
   memset(pFrameManager, 0, sizeof(SampleVOFrameManager));
@@ -170,6 +175,7 @@ int destroySampleVOFrameManager(SampleVOFrameManager *pFrameManager) {
   return 0;
 }
 
+/* 三、上下文结构体初始化与销毁 */
 int initSampleVOContext(SampleVOContext *pContext) {
   memset(pContext, 0, sizeof(SampleVOContext));
   int err = pthread_mutex_init(&pContext->mWaitFrameLock, NULL);
@@ -190,6 +196,7 @@ int destroySampleVOContext(SampleVOContext *pContext) {
   return 0;
 }
 
+/* 四、回调闭环 */
 static ERRORTYPE SampleVOCallbackWrapper(void *cookie, MPP_CHN_S *pChn,
                                          MPP_EVENT_TYPE event,
                                          void *pEventData) {
@@ -244,6 +251,7 @@ static ERRORTYPE SampleVO_CLOCKCallbackWrapper(void *cookie, MPP_CHN_S *pChn,
   return SUCCESS;
 }
 
+/* 二、解析并加载配置文件 */
 static int ParseCmdLine(int argc, char **argv,
                         SampleVOCmdLineParam *pCmdLinePara) {
   alogd("sample vo path:[%s], arg number is [%d]", argv[0], argc);
@@ -336,6 +344,7 @@ static ERRORTYPE loadSampleVOConfig(SampleVOConfig *pConfig,
   return SUCCESS;
 }
 
+/* 五、主函数实现 */
 int main(int argc, char *argv[]) {
   int result = 0;
   /* 1、准备工作 */
@@ -566,7 +575,6 @@ int main(int argc, char *argv[]) {
   AW_MPI_VO_Disable(stContext.mVoDev);
   stContext.mVoDev = -1;
   /* 4.4 销毁图像管理器 */
-  destroySampleVOFrameManager(&stContext.mFrameManager);
   /* 4.5 退出MPP系统 */
   AW_MPI_SYS_Exit();
   /* 4.6 关闭YUV文件 */
@@ -580,5 +588,3 @@ _exit:
   alogd("%s test result: %s", argv[0], ((0 == result) ? "success" : "fail"));
   return result;
 }
-
-//}
